@@ -1,0 +1,64 @@
+CHALLENGE:
+You have 2 seconds to hash this message using sha512 algorithm
+Send the answer back using http://ringzer0team.com/challenges/13/[your_hash]
+
+EXAMPLE MESSAGE:
+----- BEGIN MESSAGE -----
+OQ5GbOmvyzFuVQwrEFHQ4w4kSPtiV5zALu7N9j9xIFSulfMQKjwFGrPo79wS4ViGgfjfpjDXOmh0rTG233yzkeNhdaZ7V8E2eN8tXChCPos78YZ1Ror2s49w4ZuQYYJ2CImpatRQIaNGYDyGRPyaKywEoRlcFU57sintB59a5NGUg5qYKPYkelPs20uxLqv4yIn0Dn0z0xj7sAV3fJekUTCNKXamdvgC4usyIiXzF6wYwhRCRWMCGffg2ft6BzyvURTsZHRvDek0l2t2O6vkbAr4GK17aptV7ddWKVieZt5blo40lpanPshl38j4oDPlGT8hEhluBgvMvqCGFDUlW2xP1HJgaorG8qNDyZXZ6jCrz4Y5yIgkBEZsbzybOQIM7mfvb3l7dNpCIex6NEhe87w9wUbbBJNyVTTWN5UQI9iheGdRblVaiiaF3bGuKjSw3CiGx3m63vd72hO3sA3BI36B5CVFME1F7acv4orXKvVCCAwV0pmzjj0eLMKnhCTeDVzxaRlKc6dFxzroPENZNE3phEDo6mtA8SX9A9KC5N8tcqHSUkHyPBNW5ga2tusscgrCf25bF4uIk2q4cYtRp6EldEdwZwO1D6uIYqKul53vXjqZ8JHnFbyJGC5vZKnsHI1vZCQaxJvkTMaRlI4RKtqhWmDLWQ4upVQeowfL5BVPdWwour64LmbxzF9mm3GBPmG3IMEEdqjgcGvxYrszEuX3ZWgbPMDuY9oxLT1O9bVcIgAwySV3cIX1v32aFvvuvJR7tIMsKxviEVE3DqWGZKxkDql9MHt8ha6AJISj6esB0Xuudh03RoekFpjiWCg3DcucLdmHhE87rsrvziohwss1IB9v4gpyjJAUMMrThpRyI9T8h7fDqxvYZvjUBziK8JvKlMus2cRBbAziyFMP38DTtNEVdMwblRMxu6Qm9xNaYdjnJW2DUwmeaQ0dtmeF4Q3oNJBM7fNVjW9SI1mtnyxnfoqzBv4vcXKQxctuh6grTf9s6lLkK9yQoPfPaabd
+----- END MESSAGE -----
+
+SOLUTION:
+The challenge is relatively simple. These things need to happen in order:
+- download (and strip) a message
+- compute the sha512 hash
+- use the hash to construct a URL
+- sends a request to the URL
+- capture and display the response
+
+I choose to complete this challenge using Python. I used the urllib2 and hashlib libraries.
+Because the website requires logging in in order to receive a message, we also need to send our PHP session id in each request. 
+A final detail, is that the timing is important, so it's necessary to add a timeout (of 1 second) to the requests.
+See hash_me_please.py (copied below) for the code. The only thing you need to do is enter a correct PHPSESSID (I'm not giving you mine :p).
+Running the script will save the response in a file called 'output' that you can then open with a browser to collect the flag.
+
+FLAG: 
+FLAG-mukgu5g2w932t2kx1nqnhhlhy4
+
+----------------------------------------------
+import urllib2
+import hashlib
+
+# step 1: download message
+URL = "http://ringzer0team.com/challenges/13"
+mycookie = "PHPSESSID=$ENTERPHPSESSIDHERE"		# website requires login, so we need to send a valid PHP session id for authentication
+
+opener = urllib2.build_opener()
+opener.addheaders.append(("Cookie", mycookie))
+response = opener.open(URL, timeout=1)
+html = response.read()
+
+beginmessage = "----- BEGIN MESSAGE -----"
+endmessage = "----- END MESSAGE -----"
+index1 = html.find(beginmessage) + len(beginmessage + "<br />\n\t\t\t")
+index2 = html.find(endmessage) - len("<br />\n\t\t\t")
+message = html[index1:index2]
+
+print message, len(message)
+
+# step 2: compute the sha512 hash
+myhash = hashlib.sha512(message).hexdigest()
+print myhash
+
+# step 3: use the hash to construct a URL
+URL = "http://ringzer0team.com/challenges/13/" + myhash
+
+# step 4: sends a request to the URL
+opener = urllib2.build_opener()
+opener.addheaders.append(("Cookie", mycookie))
+response = opener.open(URL, timeout=1)
+html = response.read()
+
+# step 5: capture and display the response
+f = open("output", 'w')
+f.write(html)
+f.close()
