@@ -1,0 +1,37 @@
+CHALLENGE
+ELF Crack Me 1 - Time to Learning x86 ASM & gdb
+
+SOLUTION
+First, we need to download the binary. I renamed it to "chall11".
+
+Next, we need to make it executable:
+$ chmod +x chall11
+
+Then we can use objdump to get the assembly code:
+$ objdump -d -M intel chall11 > objdump_chall11
+
+Looking at the function calls can give a good idea of what happens:
+- malloc
+- memset
+- puts
+- puts
+
+We need to run the binary to see how it works:
+$ ./chall11
+Loading...
+Where is the flag?
+
+At first I thought it was expecting some kind of input (maybe as a program argument), but after looking at the code some more, it seems this binary isn't trying to verify a provided flag, like other RE challenges. Instead it seems to load the flag into memory, before simply exiting. Let's put some breakpoints in gdb and examine the memory:
+$ gdb chall11
+
+If the flag is going to be loaded into memory, it will be at the pointer returned by malloc. So let's put a breakpoint right after malloc and examine the return value to get the pointer. Then we can set a breakpoint at the end of the program (after the flag has been copied) and inspect the pointer:
+(gdb) break *0x804848a
+(gdb) run
+(gdb) x/x $eax
+(gdb) break *0x8048549
+(gdb) c
+(gdb) x/s 0x804b008
+
+
+FLAG:
+FLAG-4092849uio2jfklsj4kl
