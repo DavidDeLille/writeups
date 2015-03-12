@@ -541,6 +541,25 @@ The original pointer for the filename is 0x08048477. This means that reading fro
 Winning input: 1337_P455W0RD\x00\x00\x00\x7f\x87\x04\x08
 Flag: who_needs_%eip
 -------------------------------
+Police Records - 140
+
+The goal here is to understand the python code used to send/receive messages and write a client to interact with the server. The flag we need to find is the duplicate badge number that is present in the directory.
+
+The handle function controls execution based on the messages it receives. At first, it expects to receive "0xAA" and will return a cookie. From that point on, it expects a struct containing "0xFF", a cookie, a badge number (not used), a command, and an entry number. If the request is malformed, or if the starting byte or the cookie are wrong, the connection is terminated. If everything is OK, it will return the information about the officer with the given entry number, and repeat the loop.
+
+The first part of the challenge is to be able to send and receive messages. For this, it's important to use Python3, because the provided xor() function tries to execute certain operations on strings that are not supported in Python2.
+To send a message (except the first message), we need to pack the struct. This is relatively straightforward; you just need to understand that the format string outlines what types of data types are following. Once we have the packed struct, we need to add padding. Luckily, we can just copy the provided function secure_pad().
+Receiving a message is the reverse: first remove padding (with the provided remove_pad() function) and unpack the struct. Because you have the provide the length of the data, I first unpack it with only the first byte of the message (to get the length), and then unpack it correctly.
+The final thing we need to do, is be able to extract the badge number from the information that is sent; this is not really hard.
+
+Now that we can send/receive message, we can focus on finding the duplicate badge number. I solved this by iterating through incrementing entry numbers and storing the badge numbers. As soon as the duplicate badge number is detected, this number is printed and the progam exits.
+I used a SortedList to be able to efficiently search for the badge number, but it wasn't really needed because you need to store less than a 1000 numbers.
+
+The duplicate badge number is found for entry 530 and 903.
+
+FLAG: 1430758
+
+(See client.py for the code)
 -------------------------------
 -------------------------------
 -------------------------------
