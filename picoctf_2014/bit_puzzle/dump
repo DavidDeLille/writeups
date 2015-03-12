@@ -1,0 +1,51 @@
+0x804850f
+0x804851b
+break *0x80485a1
+
+- string should be 32 characters
+
+s0 = c0-c3	0x1c(%esp)	0x766c6f73	solv
+s1 = c4-c7	0x20(%esp)	0x5f676e69	ing_
+s2 = c8-c11	0x24(%esp)	0x61757165	equa
+s3 = c12-c15	0x28(%esp)	0x6e6f6974	tion
+s4 = c16-c19	0x2c(%esp)	0x73695f73	s_is	
+s5 = c20-c23	0x30(%esp)	0x746f6c5f	_lot
+s6 = c24-c27	0x34(%esp)
+s7 = c28-c31	0x38(%esp)
+
+
+- s1 + s2 = 0xc0dcdfce
+- s0 + s1 = 0xd5d3dddc
+- 3*s0 + 5*s1 = 0x404a7666
+- s0 XOR s3 = 0x18030607
+- s0 AND s3 = 0x666c6970
+- s1 * s4 = 0xb180902b
+- s2 * s4 = 0x3e436b5f
+- s4 + 2*s5 = 0x5c483831
+- s5 AND 0x70000000 = 0x70000000
+- s5 / s6 = 0x1
+- s5 % s6 = 0xe000cec
+- 3*s4 + 2*s7 = 0x3726eb17
+- 4*s2 + 7*s7 = 0x8b0b922d
+- s3 + 3*s7 = 0xb9cf9c91
+
+----------------------
+- s0 + s1 = 0xd5d3dddc
+- 3*s0 + 5*s1 = 0x404a7666
+==>
+2*s1 = (-3*dehex("d5d3dddc")+dehex("404a7666"))%(2**32) = 3201227986
+mult_inv(3201227986, 2**32) = 4162650585
+(2*4162650585) % (2**32) = 4030333874
+==>
+4030333874*s1 = 1
+mult_inv(4030333874, 2**32) = 3748097641 = s1
+-----------------------
+
+break *0x80485b6
+set *0xffffd34c = 0xf66c6f73
+set *0xffffd350 = 0xdf676e69
+set *0xffffd354 = 0xe1757165
+
+------------------------
+s1 = (dehex("0xd5d3dddc") - dehex("0x766c6f73"))%n
+

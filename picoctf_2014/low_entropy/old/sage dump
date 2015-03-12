@@ -1,0 +1,37 @@
+# finding first prime
+def try_simplify(a,b):
+    s = str(simplify(a/b))
+    i = s.index('/')
+    c = s[:i]
+    return not str(a) == c
+
+ for i in range(len(keys)-1):
+    a = keys[i]
+    temp_list = keys[i+1:]
+    for k in temp_list:
+        if try_simplify(k, a):
+            print k
+            print
+            print a
+            print
+            print simplify(k/a)
+            print
+            print try_simplify(k, a)
+            print
+            exit()
+
+------------------------
+# finding more primes
+new_primes = []
+for k in keys:
+    for p in primes:
+        if k%p == 0:
+            new_p = k/p
+            if not new_p in primes:
+                primes.append(new_p)
+                new_primes.append(new_p)
+
+new_primes = [str(p) for p in new_primes] # Sage doesn't like to join Rationals, so cast to string first
+print ", " + ", ".join(new_primes)
+print "Done", len(primes)
+---------------------

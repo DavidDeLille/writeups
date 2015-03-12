@@ -1,0 +1,7 @@
+<h1>Registration Complete!</h1>
+<h3>Welcome <%= @new_user.name %>!</h3>
+<% if (@new_user.is_admin) then %>
+  <p>You're an admin, so you get to know the secret code: <b>flag removed</b></p>
+<% else %>
+  <p>You're not an administrator so you get no secrets.</p>
+<% end %>

@@ -1,0 +1,81 @@
+break *0x08049CF0		first text segment code run
+break *0x08049D3B		function to read + check password?
+break *0x08049CBC		call to function that prints + reads
+
+
+break *0x0804898b		the function start
+break *0x08049c67		multi-point			(skip 5778 times to get to the part where password is read)
+break *0x08048A44		switch get jump address
+break *0x08048A4B		switch jump
+break *0x08049C2E		reading input part subroutine
+break *0x08049C54		call to libc
+break *0x08049C56		call of function right after reading input
+
+
+
+break *0x
+
+break *0x08049c67
+run
+c 5778
+break *0x08049C51
+c
+
+
+break *0x08048A44
+run
+c 5779
+
+print $eax
+
+c
+print $eax
+
+
+"a"
+$5 = 1
+$6 = 24
+$7 = 28
+$8 = 27
+$9 = 24
+$10 = 24
+$11 = 23
+$12 = 16
+$13 = 14
+$14 = 2
+$15 = 24
+$16 = 24
+$17 = 23
+$18 = 17
+$19 = 24
+$20 = 4
+$21 = 24
+$22 = 2
+$23 = 24
+$24 = 15
+$25 = 32	get a
+$26 = 1
+$27 = 24
+$28 = 28
+$29 = 27
+$30 = 24
+$31 = 24
+$32 = 23
+$33 = 16
+$34 = 24
+$35 = 15
+$36 = 32	print S
+$37 = 1
+$38 = 24
+$39 = 15
+$40 = 32	print O
+$41 = 1
+$42 = 24
+
+def do():
+	with open('temp', 'r') as f:
+		s = f.read()
+	l = s.split('\n')
+	l = [a for a in l if a != ""]
+	l = [a for a in l if a[0] == '$']
+	return '\n'.join(l)

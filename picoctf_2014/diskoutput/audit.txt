@@ -1,0 +1,27 @@
+Foremost version 1.5.7 by Jesse Kornblum, Kris Kendall, and Nick Mikus
+Audit File
+
+Foremost started at Wed Dec 24 11:19:42 2014
+Invocation: foremost -d -v -o diskoutput/ -t jpg -i disk.img 
+Output directory: /root/Desktop/picoctf/diskoutput
+Configuration file: /etc/foremost.conf
+------------------------------------------------------------------
+File: disk.img
+Start: Wed Dec 24 11:19:42 2014
+Length: 5 MB (5242880 bytes)
+ 
+Num	 Name (bs=512)	       Size	 File Offset	 Comment 
+
+0:	00000057.jpg 	      89 KB 	      29184 	 
+1:	00000237.jpg 	      13 KB 	     121344 	 
+2:	00000265.jpg 	     172 KB 	     135680 	 
+3:	00000613.jpg 	      34 KB 	     313856 	 
+4:	00000685.jpg 	      56 KB 	     350720 	 
+Finish: Wed Dec 24 11:19:42 2014
+
+5 FILES EXTRACTED
+	
+jpg:= 5
+------------------------------------------------------------------
+
+Foremost finished at Wed Dec 24 11:19:42 2014

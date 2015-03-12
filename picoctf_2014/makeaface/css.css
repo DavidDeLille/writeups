@@ -1,0 +1,31 @@
+div {
+  /* display: inline-block; */
+  width: 600px;
+  height: 410px;
+  border: 2px solid black;
+  border-radius: 10px;
+  padding: 1em;
+  margin-left: auto;
+  margin-right: auto;
+  background-color: black;
+  color: white;
+  font-family: sans-serif;
+  box-shadow: 15px 15px 15px #666666;
+}
+
+video {
+  display: none;
+  height: 256;
+  width: 256;
+}
+
+h1 {
+  text-align: center;
+}
+
+canvas {
+  display: inline;
+  float: right;
+  height: 256;
+  width: 256;
+}

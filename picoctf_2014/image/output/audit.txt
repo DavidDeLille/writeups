@@ -1,0 +1,23 @@
+Foremost version 1.5.7 by Jesse Kornblum, Kris Kendall, and Nick Mikus
+Audit File
+
+Foremost started at Sat Jan  3 17:07:59 2015
+Invocation: foremost -i image.png 
+Output directory: /root/Desktop/hacking/picoctf/image/output
+Configuration file: /etc/foremost.conf
+------------------------------------------------------------------
+File: image.png
+Start: Sat Jan  3 17:07:59 2015
+Length: 1 KB (1686 bytes)
+ 
+Num	 Name (bs=512)	       Size	 File Offset	 Comment 
+
+0:	00000000.png 	       1 KB 	          0 	  (280 x 280)
+Finish: Sat Jan  3 17:07:59 2015
+
+1 FILES EXTRACTED
+	
+png:= 1
+------------------------------------------------------------------
+
+Foremost finished at Sat Jan  3 17:07:59 2015

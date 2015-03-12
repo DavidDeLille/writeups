@@ -1,0 +1,88 @@
+Obfuscation - 150
+
+Challenge
+You find a thumbdrive loaded with a strange binary. It seems to be asking for a password... Can you find it?
+
+Hint
+You'll probably want a debugger to analyze this program - regular disassembly may be hard!
+
+-------------
+Wow, this one was kind of hard for me!
+
+We get a binary and the goal is to find the password that gets accepted. This password is the flag; similar to the Bit Puzzle challenge.
+
+We start by finding where the program starts. Because the binary is stripped, we won't just be able to find main so easily. When we run the binary, we see that it prints "Password:" and after that it reads some input. We'll need to look for this in the assembly code. We can get this code using objdump and stroe it in a file called "dumped":
+$ objdump -M intel -S obfuscate > dumped
+
+We know that we need to look at the .text-segment, and at the beginning of that segment, we can see a call to printf and a call to getline (address 0x804844d and 0x804846a). We can then use gdb to confirm through some breakpoints that these are indeed the calls used at the beginning of main.
+
+Time to see what the main function does:
+- 0x804844d: print "Password:"
+- 0x804846a: get input
+- 0x8048473: if eax is negative (if getline failed), print "Incorrect" and exit (see below)
+- 0x8048484: call a function at 0x8048580 that has the password pointer and 0 as arguments
+- 0x804848d: if eax is not 0, print "Correct" and exit
+- 0x804848f: if eax is 0, print "Incorrect" and exit
+
+We can see that the return value of the function at 0x8048580 (which I'll call "check_password") determines if the password was correct. It returns 0, iff the password is incorrect. At this point, we need to see what this function does, but it is a very complex function, because it involes a switch with 36 cases. This is why I recommend using Ida to disassemble this (I still used gdb for debugging); it allows you to see the code in graph view because it automatically breaks up the code in basic blocks, and you can also rename code locations to more meaningful text than "0x8048600" for example.
+
+So after loading the binary in Ida, and getting to the function that starts at 0x8048580 (rename it "check_password"), we can start to discover how it works. 
+
+The first basic block contains the function prologue and moves certain values into registers. Ebx will hold the pointer to the password and edx is set to 0 (the second argument). Esi is set to some location on the stack (exp+0xc). We can also see that some information about the proces (from register gs) is loaded onto the stack; this will be used to detect a stack overflow. This basic block continues unconditionally into the next block.
+
+The second block is jumped to a lot (because there are a lot of incoming arrows). It is obviously the first part of a large loop. It starts be setting a large part of the stack to 0 (exp+0x0c to esp+0x8c). Then it loads a byte from the password (depending on edx), stores it in ebp (we can also see that this regitser is never changed during the function), and performs some weird calculation with it. This calculation results in a value in the zeroed-out part of the stack to be set to 1. It also stores the password character in ecx, subtracts 0xa from it, and compares it to 0x70. If this value is below or equal 0x70, it will jump to the switch basic block; if not, it jumps to 0x080485DE, which we'll see later, but basically means it the function will return 0. In other words: this basic block loads a character from the password, sets a large part of the stack to zero, uses a calculation to put a 1 on the stack, and then verifies that the character is smaller than 0x7a (character 'z').
+
+The switch basic block (0x08048600) uses the value of ecx to determine a jump location. It was intentinoally designed to be hard to understand. I found the best way to understand which basic block corresponds to which case, is by setting a break point in this basic block, then running the program with different inputs and seeing where the jump leads. For example, I set a break point at 0x08048603 (the jump instruction), enter password "a" and let the debugger stop at the breakpoint, set 1 instruction, and see where the debugger is now (in this case 0x08048780). I will then rename that basic block "case_a". After trying a few characters and renaming some basic blocks, it's clear that only 0-9 and a-z are valid inputs; all other characters jump to 0x080485DE (which is the FAIL basic block).
+
+Talking about this FAIL block, all it does is set eax to 0 and continue into the basic block at 0x080485E0. That basic block simply checks if there was a stack overflow and returns to main without changing eax (which is why I called it the "return" block).
+
+We now have a good idea what the important basic blocks do: there's the beginning of the loop (that reads a password character based on edx), the switch block (that jumps to one of the "case"-blocks), the FAIL block (that amkes the function return 0), and the return block (that returns eax without changing it). The only this left, is to look at the individual case blocks and see how those work.
+
+As said before, by using a debugger, we can determine the address of a basic block that corresponds to a certain character. Just set a breakpoint at the jump in the switch block, enter the character as password, step over the jump, and look at eip. If we do this for all possible input characters (0-9 and a-z), we can not only rename the blocks, but also see that they are laid out in a simple pattern. The basic block located under (in the terms of address) the block "case_a", will be the basic block for case 'b'. This way we don't even need to try all 36 possible charachters.
+
+After looking at all these case blocks, we can see that each character is only allowed at one or 2 possible places in our password. For example, case_a will check that edx (which holds the index of the character) equals 0x23. In other words, "a" can only be used as at index 0x23 of the password. If we try to use 'a' at another index, the switch will jump to case_a, find the wrond edx, and jump to FAIL. All case blocks have a similar check that check edx. 
+
+Based on this, we can create a list of possible characters ar each index:
+index	character
+-----------------
+0x0	0
+0x1	9
+0x2	v
+0x3	d
+0x4	f
+0x5	7
+0x6	w
+0x7	e
+0x8	f
+0x9	i
+0xa	j
+0xb	b
+0xc	6,g,k
+0xd	h
+0xe	1,5
+0xf	4
+0x10	
+0x11	m
+0x12	n
+0x13	l
+0x14	2,r
+0x15	z
+0x16	x
+0x17	y
+0x18	t
+0x19	s
+0x1a	u
+0x1b
+0x1c	0
+0x1d	q
+0x1e	p
+0x1f	
+0x20	c
+0x21	8
+0x22
+0x23	a
+
+Notice that index 0x10 has no corresponding character, so the password can have 16 characters at most. Also, there are several posibilities for the character at index 0xc and 0xe. We'll just have to try those manually. The first 12 characters are easy with this list: "09vdf7wefijb". There are 3 possible character for index 13. Two of those options (g and k) will also jump to the return basic block. If we try "09vdf7wefijbk" as password, the function returns with eax not equal to 0, and we get our "correct" message. We found the right password.
+
+Flag: 09vdf7wefijbk
+

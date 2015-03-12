@@ -1,0 +1,224 @@
+$5 = 1
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$6 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$7 = 28
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$8 = 27
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$9 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$10 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$11 = 23
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$12 = 16
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$13 = 14
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$14 = 2
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$15 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$16 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$17 = 23
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$18 = 17
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$19 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$20 = 4
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$21 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$22 = 2
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$23 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$24 = 15
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$25 = 32
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$26 = 1
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$27 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$28 = 28
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$29 = 27
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$30 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$31 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$32 = 23
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$33 = 16
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$34 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$35 = 15
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$36 = 32
+(gdb) c
+Continuing.
+S
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$37 = 1
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$38 = 24
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$39 = 15
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$40 = 32
+(gdb) c
+Continuing.
+o
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$41 = 1
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x08048a44 in ?? ()
+(gdb) print $eax
+$42 = 24
+(gdb) 
