@@ -1,0 +1,19 @@
+Challenge 1 Bypass me if you can
+
+SOLUTION
+The first thing you need to do during SQL injection (SQLi) is form an idea of what the query looks like. In this case, the webserver probably checks if the following query returns one (or more) records:
+SELECT * FROM users WHERE username='$input1' AND password='$input2'
+
+(Note that a more advanced challenge would check that this query returns exactly 1 record, but that is not the case here.)
+
+So the goal is to abuse the query in order to get a positive result. The following query would do just that (assuming the table contains at least 1 record):
+SELECT * from users WHERE 1=1
+
+Now all we need to do is escape the input and alter the query to get the result we need:
+$input1 = a
+$input2 = a' OR 'a'='a
+SELECT * FROM users WHERE username='a' AND password='a' OR 'a'='a'
+
+Note that $input2 doesn't have a quotation mark at the beginning or the end, because the query already provides them.
+
+Because the condition "'a'='a'" is true for all records, the webserver concludes that the user entered a valid username and password.

