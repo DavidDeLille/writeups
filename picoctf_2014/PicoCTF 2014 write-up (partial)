@@ -666,6 +666,84 @@ Executing that command will spawn a shell, and we can cat the flag file.
 
 FLAG: give_shell_was_useful
 -------------------------------
+Revenge of the Bleichenbacher - 170
+
+We are only told there's a server running somewhere that runs the code provided in a jar file.
+
+The first step is of course to have a look at what the code does. Luckily for us, even compiled Java code can easily be turned back into source code. I used JD-GUI for this. These are the classes described in that jar, and roughly what they do (in the order that makes most sense to me to explain their function):
+- Command: abstract class to model the 3 available commands
+- HelpCommand: (extends Command) prints a message that can be read in the source code, outlining the different commands and what they do
+- ListCommand: (extends Command) read the name of a directory and print the contents
+- ReadCommand: (extends Command) read the name of a file and print the contents
+- Commands: container, following the Singleton pattern (meaning there can only be 1 instance of it), used to store the commands
+- CommandServer: contains the entry point for the program and simply creates a new thread for every connection on port 4919 and runs RequestHandler on it
+- RequestHandler: handles a single command request and closes the connection afterwards
+
+It's interesting to take a closer look at RequestHandler, because it's the most important of all the classes. First of all, we can see it implements the Runnable interface, so that each new Thread knows to execute the function run(). This function starts by reading input from its socket. We can see it expects a String, that consists of 2 Strings separated by a space (or else we get "that's a bad command"). Next, a signature verification is run on these 2 Strings, and if it succeeds, the command corresponding to the first String is executed.
+
+This verification function is what this challenge is all about. It takes 2 arguments; the 2 Strings that were received over the network. The first String (the command) is hashed using the SHA1-algorithm. The second String is parsed into a BigInteger (with base 16!), then cubed, mod a very large number. Note that we won't be needing this number to solve the challenge. The cube is then cast to a hex String again, after which leading zeros are added until the length is at least 768 characters.
+This is where the verification happens:
+- The first part of the hex String should be "0001ffffffffff" (10 times 'f')
+- The total length (including the 3 leading zeros) should be exactly 768
+- The hash of the first String should be contained within the hex String
+- Any characters leading up to the hash substring should be 'f' (except the 2 characters right before the hash)
+- The 2 characters right before the hash substring should be 0
+
+Combining these requirements, we get the following format:
+0001ffffffffff<a number of 'f's>00<hash><undefined>		(length = 768)
+
+The weakness lies in the fact that the hash is allowed to sit in the middle of the hex String. In order for this to form a correct RSA signature, the hash should be at the far right; meaning the undefined String should be "". Because of this weakness, it's possible to easily craft cube roots of Strings that will be accepted by this faulty implementation. Here is a good description of a talk given by the person would discovered this type of weakness: https://www.ietf.org/mail-archive/web/openpgp/current/msg00999.html (we can even reuse the numbers from the example used to explain the weakness).
+The explanation goes like this:
+
+1) Because the final hex String (which we will call C from now on) is "1fff...", this number would start with a lot of '1's if written in binary. This means the number equals a large power of 2 minus a different number. Similar to how 999999995 equals (10^10)-5. We know the exponent because we know the total length of the hex String.
+==> C = 1ffffffffffffffff00<hash><garbage> = 2^(3057) - something
+
+2) We are only interested in the part "00<hash>", so if we wrote that number as D, we would like to use D in our equation. Let's call N the number we get, if we flip all the bits in D (including the 2 null bytes). Then we get:
+==> C = 2^(3057) - N*2^(some_exponent) +/- something_else
+
+3) The exponent will determine how far our D will appear as a substring in C. I just copied the value of 2072 from the example, but I'm sure there are other possible values:
+==> C = 2^(3057) - N*2^(2072) +/- something_else
+
+4) At this point, we need the use this equation:
+(A-B)^3 = A^3 - 3*B*A^2 + 3*A*B^2 - B^3
+
+5) Notice how the first term of C corresponds to A^3:
+A = 2^1019
+
+6) Then we could calculate B, if we know the second term of C:
+     N*2^(2072) = 3*B*A^2
+<==> B = N/3 * (2^2072 / 2^2038)
+<==> B = N/3 * 2^34
+
+7) Combining C and the cubed equation:
+(A-B)^3 = A^3 - 3*B*A^2 + 3*A*B^2 - B^3 = 2^(3057) - N*2^(2072) +/- something_else = C
+
+8) If we say the last 2 terms of the cubed equation coreespond to the something_else (the garbage we are allowed to chose freely), we can say:
+(A-B)^3 = C
+
+9) Remember that we are looking for cube root of C, because this is the signature of the corresponding command. This cube root will equal A-B.
+
+
+We now know how to forge a signature (cube root of a valid hex String): just calculated A-B = 2^1019 - N/3 * 2^34.
+Take a look at my code (calc_sig.py) if you want to know the details. 
+One aspect I haven't covered is that N should be divisble by 3. Luckily for us, we can add extra hexadecimal characters at the end to make N divisable by 3. Another solution would be to try different capitalisation for the command until its hash is divisible by 3.
+Another problem is that the last character of D seems to get corrupted. The solution is to add a random character at the end to make sure our hash isn't affected.
+
+We can now calculate the signatures for the 3 commands (even though we only need the "open/cat" command):
+ls ebfdec641529d4b59a54e18f8b0e9730f85939fb
+"7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeabe5529085718d1b9ccdc68214b968c996a076f7fa69400000000"
+
+cat 9d989e8d27dc9e0ec3389fc855f142c3d40f0c50
+"7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeab7ccb7e118a7b7d69044b7fb5c7ec59051abebb1669400000000"
+
+help 92005ecf3788faea8346a7919fba0232188561ab
+"7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeab6d55d3bef4b6a3e359b38a177fa2ad9820b1d78fc00000000"
+
+If you cube any of these large numbers, you'll get the String that will get accepted as a valid signature, and will contain the SHA1-hash of the corresponding command (listed above, right next to the command).
+
+Now that we can succesfully run commands, it's just a matter of sending the "cat" command and reading the "flag" file. See code in client.py.
+
+FLAG: arent_signature_forgeries_just_great
 -------------------------------
 -------------------------------
 -------------------------------
@@ -675,3 +753,4 @@ FLAG: give_shell_was_useful
 -------------------------------
 -------------------------------
 
+ 
