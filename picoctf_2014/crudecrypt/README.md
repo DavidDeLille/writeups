@@ -1,10 +1,10 @@
-**Name**: CrudeCrypt
-**Points**: 180
-**Type**: Binary Exploitation
+**Name**: CrudeCrypt  
+**Points**: 180  
+**Type**: Binary Exploitation  
 **Challenge**:  
-Without proper maintainers, development of [Truecrypt](http://truecrypt.sourceforge.net/) has stopped! CrudeCrypt has emerged as a notable alternative in the open source community. The author has promised it is 'secure' but we know better than that. Take a look at the [code](https://picoctf.com/problem-static/binary/CrudeCrypt/crude_crypt.c) and read the contents of `flag.txt` from the server! The problem is at /home/crudecrypt/crude_crypt on the shell server.
+Without proper maintainers, development of [Truecrypt](http://truecrypt.sourceforge.net/) has stopped! CrudeCrypt has emerged as a notable alternative in the open source community. The author has promised it is 'secure' but we know better than that. Take a look at the [code](https://picoctf.com/problem-static/binary/CrudeCrypt/crude_crypt.c) and read the contents of `flag.txt` from the server! The problem is at /home/crudecrypt/crude_crypt on the shell server.  
 **Hint**:  
-You can never trust user input!
+You can never trust user input!  
 **Files**: crude_crypt.c
 
 *****
