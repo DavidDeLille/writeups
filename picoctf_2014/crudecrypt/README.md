@@ -24,7 +24,7 @@ What decrypt_file does:
 - get file size of infile (using fstats)
 - calloc buffer of that size
 - copy contents of infile to buffer
-- try decrypt_buffer
+- try decrypt_buffer (this function works correctly)
     if fail, return
 - create file_header based on decrypted data; we can put whatever we want in the header!
 - check if magic number is correct
@@ -38,14 +38,8 @@ What check_hostname does:
 - call safe_gethostname
 - return after calling strcmp
 
-What encrypt_buffer/decrypt_buffer does:
-- define cypher as AES (rijndael-128 with CBC)
-- check if buffer is a multiple of blocksize
-    if not, fail
-- execute encryption decryption (with "AAAAAAAAAAAAAAAA" as initialisation vector); see reference.
-
 *****
- # Exploitation
+# Exploitation
 
 The bug we are going to exploit is in the function check_hostname. The strncpy is used unsafely, because it is being told to copy the contents of src to dest (for the length of **src**). A safe usage would copy the contents of src to dest (for the length of **dest**)! Using strncpy in this way is the same as using strcpy. By copying a src string that is larger than dest, we can cause a stack overflow which we will overwrite eip.
 
