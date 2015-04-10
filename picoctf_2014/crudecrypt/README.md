@@ -66,10 +66,10 @@ Ok, so we know we have control of eip and the stack. After checking that the sta
 
 Using gdb, we can determine that the hots variable is located at 0xffffd5c0 and the return address is located at 0xffffd60c. If we provide a reasonable nop sled (32 bytes), this should bring the address of the middle of the nop sled to 0xffffd64c. It doesn't really matter what we use to fill the host variable before encryption, as long as there are no string terminators (I will be using "a"s).
 
-The structure of the exploit data will be:  
+##### The structure of the exploit data will be:  
 (sled address)\*8 + (\x90)\*128 + shellcode
 
-SHELLCODE:
+##### Shellcode:
 \x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80
 
 ```bash
