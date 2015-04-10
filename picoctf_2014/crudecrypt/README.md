@@ -11,7 +11,7 @@ You can never trust user input!
 
 Looking at main, we can see the programs expects 3 arguments: 
 
-`̀`C
+`̀`c
 void help() {
     printf("You have supplied invalid arguments.\n");
     printf("./crude_crypt (encrypt|decrypt) (input path) (output path)\n");
