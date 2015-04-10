@@ -41,11 +41,11 @@ What check_hostname does:
 *****
 # Exploitation
 
-The bug we are going to exploit is in the function check_hostname. The strncpy is used unsafely, because it is being told to copy the contents of src to dest (for the length of **src**). A safe usage would copy the contents of src to dest (for the length of **dest**)! Using strncpy in this way is the same as using strcpy. By copying a src string that is larger than dest, we can cause a stack overflow which we will overwrite eip.
+The bug we are going to exploit is in the function check_hostname. The strncpy is used unsafely, because it is being told to copy the contents from src to dest (for the length of **src**). A safe usage would copy the contents from src to dest (for the length of **dest**)! Using strncpy in this way is the same as using strcpy, which is unsafe if src is provided by the user. By copying a src string that is larger than dest, we can cause a stack overflow which we can use to overwrite eip.
 
-We can exploit this, because after the decryption of the infile, the header is created based on the decrypted data without any checks. This means we control whatever is in the header struct. This includes host, which is usally a 32-byte, null-terminated string. By removing the null byte at the end, we can drastically increase the length of the host string to cause the stack overflow.
+We can exploit this, because after the decryption of the infile, the header is created based on the decrypted data without any checks. This means we control whatever is in the header struct. This includes host, which is usally a 32-byte, null-terminated string. By removing the null bytes at the end, we can increase the length of the host string to cause the stack overflow.
 
-In order to verify if this bug works, we will try to encrypt a file full of "a"s, but right before the call to encrypt the data, we will tamper with the header. This will result in an encrypted file that will result in a SEGFAULT when decrypted. We'll use password "a", but it doesn't really matter.
+In order to verify if this bug works, we will try to encrypt a file full of "a"s, but right before the call to encrypt the data, we will tamper with the header. This will result in an encrypted file that will result in a SEGFAULT when decrypted. I will use password "a", but it doesn't really matter.
 
 Let's try it:
 ```bash
