@@ -98,8 +98,7 @@ writing_software_is_hard
 If you're having trouble with landing on the nop sled, you can push it around by changing the arguments. Since the 3<sup>rd</sup> argument (outfile) doesn't matter, as long as it can be opened, you could try playing with this. Alternatively, you could create a bigger nop sled. I just got lucked that it worked right away, but I had trouble running it my tmp directory.
 
 *****
-
-REFERENCES:
+References:
 - [stat struct](http://codewiki.wikidot.com/c:struct-stat)
 - [fstat](http://linux.die.net/man/2/fstat)
 - [mcrypt library](http://mcrypt.hellug.gr/lib/mcrypt.3.html)
