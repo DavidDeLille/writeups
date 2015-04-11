@@ -1,8 +1,8 @@
 **Name**: CrudeCrypt  
 **Points**: 180  
 **Type**: Binary Exploitation  
-**Challenge**:  
-Without proper maintainers, development of [Truecrypt](http://truecrypt.sourceforge.net/) has stopped! CrudeCrypt has emerged as a notable alternative in the open source community. The author has promised it is 'secure' but we know better than that. Take a look at the [code](https://picoctf.com/problem-static/binary/CrudeCrypt/crude_crypt.c) and read the contents of `flag.txt` from the server! The problem is at /home/crudecrypt/crude_crypt on the shell server.  
+**Description**:  
+Without proper maintainers, development of [Truecrypt](http://truecrypt.sourceforge.net/) has stopped! CrudeCrypt has emerged as a notable alternative in the open source community. The author has promised it is 'secure' but we know better than that. Take a look at the [code](https://picoctf.com/problem-static/binary/CrudeCrypt/crude_crypt.c) and read the contents of `flag.txt` from the server! The problem is at `/home/crudecrypt/crude_crypt` on the shell server.  
 **Hint**:  
 You can never trust user input!  
 **Files**: crude_crypt.c
@@ -10,7 +10,9 @@ You can never trust user input!
 *****
 # Code review
 
-What main does:
+Here is what the relevant functions do:
+
+##### main
 - check if there are 3 arguments
 - check if 1st argument is "encrypt" or "decrypt", and assign action function pointer
 - if encrypt, setegid()
@@ -20,7 +22,7 @@ What main does:
 - call action(infile, outfile, digest)
 - cleanup + exit
 
-What decrypt_file does:
+##### decrypt_file
 - get file size of infile (using fstats)
 - calloc buffer of that size
 - copy contents of infile to buffer
@@ -34,7 +36,7 @@ What decrypt_file does:
 - write_size = MIN(header->file_size, infile size - header size); possible signed/unsigned bug!
 - write decrypted data to outfile
 
-What check_hostname does:
+##### check_hostname
 - unsafe strncpy from header->host to stack buffer of size 32
 - call safe_gethostname
 - return after calling strcmp
