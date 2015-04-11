@@ -27,12 +27,12 @@ Here is what the relevant functions do:
 - calloc buffer of that size
 - copy contents of infile to buffer
 - try decrypt_buffer (this function should work as intended)  
-    if fail, return
+  - if fail, return
 - create file_header based on decrypted data; we can put whatever we want in the header!
 - check if magic number is correct  
-    if not, return
+  - if not, return
 - call check_hostname  
-    print error message if it doesn't match
+  - print error message if it doesn't match
 - write_size = MIN(header->file_size, infile size - header size); possible signed/unsigned bug!
 - write decrypted data to outfile
 
