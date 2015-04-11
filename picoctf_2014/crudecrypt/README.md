@@ -24,19 +24,29 @@ What decrypt_file does:
 - get file size of infile (using fstats)
 - calloc buffer of that size
 - copy contents of infile to buffer
-- try decrypt_buffer (this function works correctly)
+- try decrypt_buffer (this function should work as intended)
     if fail, return
 - create file_header based on decrypted data; we can put whatever we want in the header!
 - check if magic number is correct
     if not, return
-- (print error message if hostname doesn't match)
+- call check_hostname
+    print error message if it doesn't match
 - write_size = MIN(header->file_size, infile size - header size); possible signed/unsigned bug!
 - write decrypted data to outfile
 
 What check_hostname does:
-- unsafe strncpy from header->host to buffer of size 32
+- unsafe strncpy from header->host to stack buffer of size 32
 - call safe_gethostname
 - return after calling strcmp
+
+```C
+bool check_hostname(file_header* header) {
+    char saved_host[HOST_LEN], current_host[HOST_LEN];
+    strncpy(saved_host, header->host, strlen(header->host));
+    safe_gethostname(current_host, HOST_LEN);
+    return strcmp(saved_host, current_host) == 0;
+}
+```
 
 *****
 # Exploitation
@@ -83,12 +93,11 @@ $ cat flag.txt
 writing_software_is_hard
 ```
 
-Note:  
 If you're having trouble with landing on the nop sled, you can push it around by changing the arguments. Since the 3rd argument (outfile) doesn't matter, as long as it can be opened, you could try playing with this. Alternatively, you could create a bigger nop sled. I just got lucked that it worked right away, but I had trouble running it my tmp directory.
 
 *****
 
 REFERENCES:
-http://codewiki.wikidot.com/c:struct-stat
-http://linux.die.net/man/2/fstat
-http://mcrypt.hellug.gr/lib/mcrypt.3.html
+- [stat struct](http://codewiki.wikidot.com/c:struct-stat)
+- [fstat](http://linux.die.net/man/2/fstat)
+- [mcrypt library](http://mcrypt.hellug.gr/lib/mcrypt.3.html)
