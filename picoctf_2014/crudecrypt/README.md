@@ -48,11 +48,11 @@ We can exploit this, because after the decryption of the infile, the header is c
 In order to verify if this bug works, we will try to encrypt a file full of "a"s, but right before the call to encrypt the data, we will tamper with the header. This will result in an encrypted file that will result in a SEGFAULT when decrypted. I will use password "a", but it doesn't really matter.
 
 ##### Testing the exploit:
-```bash
+```
 $ cp -r /home/crudecrypt/ /tmp/delilled
 $ cd /tmp/delilled/crudecrypt
 $ python -c 'print "a"*100' > a_file
-$ #<use gdb to read a_file, overwrite any null characters in host, and store the result in enc_file>
+$ <use gdb to read a_file, overwrite any null characters in host, and store the result in enc_file>
 $ ulimit -c unlimited
 $ ./crude_crypt decrypt enc_file dec_file
 -> File password: a
