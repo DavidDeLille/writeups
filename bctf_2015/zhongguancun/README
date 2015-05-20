@@ -1,0 +1,9 @@
+Score: 450
+Type: exploit
+
+$ nc 146.148.60.107 6666
+
+http://dl.bctf.cn/zhongguancun-47a25f85cc5221071886cc129046e6e4.xz
+http://dl.bctf.cn/libs-665b53481cc332132152f63f4aeed3fc.tar.gz
+
+Solved by 17 teams

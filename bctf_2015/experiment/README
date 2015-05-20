@@ -1,0 +1,8 @@
+Score: 300
+Type: programming
+
+Hi, we have a short survey with 50 questions. You can get a flag as award once you finished it.
+
+$ nc 104.197.7.111 13135
+
+Solved by 28 teams

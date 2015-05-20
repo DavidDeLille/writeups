@@ -1,0 +1,70 @@
+# Weak enc
+**Score**: 200  
+**Type**: crypto  
+**Description**:  
+`$ nc 146.148.79.13 8888`
+
+http://dl.bctf.cn/weak_enc-40eb1171f07d8ebb06bbf36849d829a1.py.xz
+
+Decrypt: NxQ1NDMYcDcw53gVHzI7
+
+The flag for this problem does not look like BCTF{xxxxxx}
+
+######
+
+## Proof of work
+
+The first part of this challenge was connecting to the encryption server. Before you can encrypt something, you need to solve a small challenge:
+Please provide your proof of work, a sha1 sum ending in 16 bit's set to 0, it must be of length 21 bytes, starting with Vpzg1pqOmRRnx53x (this last part is randomly generated)
+
+Write a script to get the proof string and generate a test that matches it; you can even re-use the server's code to complete the check. Once we can automatically generate the proof of work, we can use the server to encrypt anything we want. (see `proof_of_work.py`)
+
+## Decryption
+
+Time to tackle the second part of the challenge: understanding and reversing the encryption.
+
+http://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Welch#Encoding
+
+RE given code
+understand LZW
+see annotated.py
+proof_of_code.py
+try all characters ==> notice special cases for "koni" letters
+try a lot of a's ==> adding known letters at the end doesn't influence beginning of output
+try only combinations of "koni" letters (and try to notice prefixes that lead to the correct output)
+keep growing the prefix of known letters
+
+FLAG = nikoninikoni
+
+----------------------
+TARGET	371435343318703730e778151f323b		# output = base64decode(NxQ1NDMYcDcw53gVHzI7)
+
+INPUT	OUTPUT
+""		371435343318703730e778 		*
+a		37143534321971363fe4791a
+b		37143534321971363fe4791a
+c		37143534321971363fe4791a
+d		37143534321971363fe4791a
+e		37143534321971363fe4791a
+f		37143534321971363fe4791a
+g		37143534321971363fe4791a
+h		37143534321971363fe4791a
+i		371435343318703730e7781f 	*
+j		37143534321971363fe4791a
+k		371435343318703730e7781c 	*
+l		37143534321971363fe4791a
+m		37143534321971363fe4791a
+n		371435343318703730e7781e	*
+o		371435343318703730e7781d 	*
+p		37143534321971363fe4791a
+q		37143534321971363fe4791a
+r		37143534321971363fe4791a
+s		37143534321971363fe4791a
+t		37143534321971363fe4791a
+u		37143534321971363fe4791a
+v		37143534321971363fe4791a
+w		37143534321971363fe4791a
+x		37143534321971363fe4791a
+y		37143534321971363fe4791a
+z		37143534321971363fe4791a
+---------------

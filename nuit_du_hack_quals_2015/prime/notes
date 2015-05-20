@@ -1,0 +1,62 @@
+import primes
+
+l = primes.calc_new_primes(list(), 65535)
+
+l2 = ["{:04x}".format(i) for i in l]
+
+l3 = [i for i in l2 if not '0' in i]
+
+
+format: xxxx-xxxx-xxxx-xxxx-xxxx-xxxx
+
+0x08048DEB		main
+
+working of main:
+- check if 1 program argument
+	if not, "please give me a serial number" + exit
+- check if strlen is 29 (0x1d)
+	if not, "Wrong format" + exit
+- check if it contains 0
+	if so, "Invalid char" + exit
+- zero out some memory with 6 memsets, 5 bytes at a time (30 bytes total): 0xffffd9aa - 0xffffd9c7
+- copy parts of input to emptied memory (6 strncpys of 4 bytes each):
+input = "abcdefghijklmnopqrstuvwxz123"
+0xffffd9aa:	 "z123"
+0xffffd9af:	 "uvwx"
+0xffffd9b4:	 "pqrs"
+0xffffd9b9:	 "klmn"
+0xffffd9be:	 "fghi"
+0xffffd9c3:	 "abcd"
+- parse input as hex long ints (and replace the strings in those spots) and stor results in $ebp-0x1c to $ebp-0x30 (4 bytes each)
+- call c1 on each one and take AND of all the results
+- test if this AND is 0
+	if so, exit (no message)
+- calculate the sum of the first 5 ints and devide by the last int
+- call c1 on the result
+- if the return value is 0
+	SUCCESS
+	if not, exit (no message)
+
+
+
+azertyuiopazerty
+1111111111111111111111111111111
+
+
+gdb crackme
+set disassembly-flavor intel
+break *0x08049014
+run 1111-2222-3333-4444-5555-6666
+
+
+
+set disassembly-flavor intel
+break *0x08048E7B
+break *0x08048E8E
+break *0x08048EA1
+break *0x08048EB4
+break *0x08048EC7
+break *0x08048EDA
+run abcdefghijklmnopqrstuvwxyz123
+
+

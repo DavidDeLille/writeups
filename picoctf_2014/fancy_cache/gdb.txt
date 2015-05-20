@@ -1,0 +1,8 @@
+Undefined set logging command: "out".  Try "help set logging".
+Starting program: /root/git/writeups/picoctf_2014/fancy_cache/fancy_cache > test
+warning: no loadable sections found in added symbol-file system-supplied DSO at 0xf7fde000
+[Inferior 1 (process 7407) exited with code 01]
+Starting program: /root/git/writeups/picoctf_2014/fancy_cache/fancy_cache > test
+warning: no loadable sections found in added symbol-file system-supplied DSO at 0xf7fde000
+[Inferior 1 (process 7411) exited with code 01]
+Quit

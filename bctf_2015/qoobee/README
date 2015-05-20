@@ -1,0 +1,10 @@
+Score: 500
+Type: exploit
+
+$ nc 104.197.7.111 1002
+
+http://dl.bctf.cn/qoobee-a53284060b93371c32322f8a522db98d.xz
+
+update: libc file can be downloaded here, md5sum = 3f6aaa980b58f7c7590dee12d731e099
+
+Solved by 3 teams
