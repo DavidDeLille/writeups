@@ -3,7 +3,7 @@
 **Hint:** There is a bunch of preexisting shellcode already out there!  
 **File(s) provided:**  
 - shellz (ELF 32-bit binary)
-- shell.c (source code)
+- shellz.c (source code)
 
 ---
 # Step 0: Recon
