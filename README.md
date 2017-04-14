@@ -7,5 +7,5 @@ MarkDown code for challenge information:
 **Description:** 
 **Hint:**   
 **File(s) provided:**  
-- 
+---
 ```
